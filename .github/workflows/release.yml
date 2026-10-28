@@ -49,13 +49,13 @@ jobs:
           printf 'storeFile=upload-keystore.jks\nkeyAlias=%s\nkeyPassword=%s\nstorePassword=%s\n' "$ALIAS" "$PW" "$PW" > android/key.properties
       - run: flutter pub get
       - run: flutter test
-      - run: flutter build apk --release --split-per-abi --dart-define-from-file=.env
+      - run: .github/scripts/flutter_build.sh build apk --release --split-per-abi --dart-define-from-file=.env
       - run: |
           mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk chhabra-store.apk
           mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk chhabra-store-old-phones.apk
-      - run: flutter build apk --release --dart-define-from-file=.env
+      - run: .github/scripts/flutter_build.sh build apk --release --dart-define-from-file=.env
       - run: mv build/app/outputs/flutter-apk/app-release.apk chhabra-store-universal.apk
-      - run: flutter build appbundle --release --dart-define-from-file=.env
+      - run: .github/scripts/flutter_build.sh build appbundle --release --dart-define-from-file=.env
       - run: mv build/app/outputs/bundle/release/app-release.aab chhabra-store-play-store.aab
       - name: Verify every file is signed with the permanent key
         run: |

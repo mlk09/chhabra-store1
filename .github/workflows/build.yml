@@ -67,7 +67,7 @@ jobs:
           printf 'storeFile=upload-keystore.jks\nkeyAlias=%s\nkeyPassword=%s\nstorePassword=%s\n' "$ALIAS" "$PW" "$PW" > android/key.properties
       - if: env.HAS_KEYSTORE != 'true'
         run: echo "::warning title=Test signing::No signing key yet — this test APK uses a temporary key. Run the 'create-signing-key' workflow once (README → Signing key)."
-      - run: flutter build apk --release --split-per-abi --dart-define-from-file=.env
+      - run: .github/scripts/flutter_build.sh build apk --release --split-per-abi --dart-define-from-file=.env
       - run: mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk chhabra-store-test.apk
       - uses: actions/upload-artifact@v4
         with: { name: chhabra-store-test-apk, path: chhabra-store-test.apk, retention-days: 14 }
