@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Adaptive app icon background (used by mipmap-anydpi-v26/ic_launcher.xml). -->
+    <color name="ic_launcher_background">#14874A</color>
+    <!-- Dark splash behind the icon while the app starts. -->
     <color name="splash_bg">#0C110F</color>
 </resources>
