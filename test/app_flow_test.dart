@@ -1,5 +1,6 @@
 import 'package:chhabra_store/app.dart';
 import 'package:chhabra_store/core/app_state.dart';
+import 'package:chhabra_store/data/demo/demo_backend.dart';
 import 'package:chhabra_store/data/local/local_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,7 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// Whole-app tests in Demo mode (tests run without Supabase, like a Demo-only build).
 void main() {
   late LocalStore store;
-  setUp(() => store = LocalStore.memory());
+  setUp(() {
+    store = LocalStore.memory();
+    DemoStore.reset();
+  });
 
   // Use the real Mukta font so text sizes (and overflows) match a phone.
   setUpAll(() async {

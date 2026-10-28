@@ -8,6 +8,7 @@ import '../../core/money.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models/member.dart';
 import '../../data/models/shop.dart';
+import '../../domain/slots.dart';
 
 /// Shop name, address, contact, UPI ID, delivery area and open/closed status.
 class ShopSettingsScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,18 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
   Shop? _shop;
   final _c = <String, TextEditingController>{};
   bool _isOpen = true, _holiday = false, _saving = false;
+  bool _delivery = true, _pickup = true, _cod = true;
+  int _lead = 60;
+  final _slots = <String>{};
+
+  static const _slotChoices = [
+    '07:00-09:00',
+    '09:00-12:00',
+    '12:00-15:00',
+    '15:00-18:00',
+    '18:00-21:00',
+    '21:00-23:00',
+  ];
 
   TextEditingController _ctl(String key) => _c.putIfAbsent(key, TextEditingController.new);
 
@@ -46,6 +59,11 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
     _ctl('holiday_note').text = s.holidayNote ?? '';
     _isOpen = s.isOpen;
     _holiday = s.holidayMode;
+    _delivery = s.deliveryEnabled;
+    _pickup = s.pickupEnabled;
+    _cod = s.codEnabled;
+    _lead = s.slotLeadMinutes;
+    _slots.addAll(s.timeSlots);
   }
 
   @override
@@ -61,28 +79,43 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     final s = _shop!;
-    final updated = Shop(
-      id: s.id,
-      name: _v('name')!,
-      nameHi: _v('name_hi'),
-      tagline: _v('tagline'),
-      address: _v('address'),
-      city: _v('city'),
-      pincode: _v('pincode'),
-      phone: _v('phone')?.replaceAll(RegExp(r'[\s-]'), ''),
-      whatsapp: _v('whatsapp')?.replaceAll(RegExp(r'[\s-]'), ''),
-      gstin: _v('gstin')?.toUpperCase(),
-      upiId: _v('upi_id'),
-      upiName: _v('upi_name'),
-      deliveryPincodes: (_v('pincodes') ?? '').split(RegExp(r'[,\s]+')).where((p) => p.isNotEmpty).toList(),
-      deliveryRadiusKm: double.tryParse(_ctl('radius').text) ?? 3,
-      deliveryCharge: parseRupees(_ctl('charge').text) ?? 0,
-      freeDeliveryAbove: parseRupees(_ctl('free_above').text),
-      minOrder: parseRupees(_ctl('min_order').text) ?? 0,
-      isOpen: _isOpen,
-      holidayMode: _holiday,
-      holidayNote: _v('holiday_note'),
-    );
+    if (_slots.isEmpty) {
+      showSnack(context, context.tr('Keep at least one time slot.', 'कम से कम एक समय रखें।'), error: true);
+      return;
+    }
+    if (!_delivery && !_pickup) {
+      showSnack(context, context.tr('Turn on delivery or pickup.', 'डिलीवरी या पिकअप चालू रखें।'), error: true);
+      return;
+    }
+    final updated = s.copyWithJson({
+      'name': _v('name')!,
+      'name_hi': _v('name_hi'),
+      'tagline': _v('tagline'),
+      'address': _v('address'),
+      'city': _v('city'),
+      'pincode': _v('pincode'),
+      'phone': _v('phone')?.replaceAll(RegExp(r'[\s-]'), ''),
+      'whatsapp': _v('whatsapp')?.replaceAll(RegExp(r'[\s-]'), ''),
+      'gstin': _v('gstin')?.toUpperCase(),
+      'upi_id': _v('upi_id'),
+      'upi_name': _v('upi_name'),
+      'delivery_pincodes': (_v('pincodes') ?? '').split(RegExp(r'[,\s]+')).where((p) => p.isNotEmpty).toList(),
+      'delivery_radius_km': double.tryParse(_ctl('radius').text) ?? 3,
+      'delivery_charge': paiseToJson(parseRupees(_ctl('charge').text) ?? 0),
+      'free_delivery_above': parseRupees(_ctl('free_above').text) == null
+          ? null
+          : paiseToJson(parseRupees(_ctl('free_above').text)!),
+      'min_order': paiseToJson(parseRupees(_ctl('min_order').text) ?? 0),
+      'is_open': _isOpen,
+      'holiday_mode': _holiday,
+      'holiday_note': _v('holiday_note'),
+      'delivery_enabled': _delivery,
+      'pickup_enabled': _pickup,
+      'cod_enabled': _cod,
+      'slot_lead_minutes': _lead,
+      'time_slots': (_slots.toList()..sort()),
+    });
+
     setState(() => _saving = true);
     try {
       await ref.read(catalogProvider.notifier).updateShop(updated);
@@ -291,12 +324,57 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
                   type: moneyType,
                   validator: money,
                 ),
-                Text(
-                  context.tr(
-                    'Time slots and payment options come with online orders (next update).',
-                    'टाइम स्लॉट और पेमेंट विकल्प ऑनलाइन ऑर्डर के साथ आएँगे (अगला अपडेट)।',
+                SectionTitle(context.tr('Online orders', 'ऑनलाइन ऑर्डर')),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(context.tr('Home delivery', 'होम डिलीवरी')),
+                  value: _delivery,
+                  onChanged: (v) => setState(() => _delivery = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(context.tr('Pickup from shop', 'दुकान से पिकअप')),
+                  value: _pickup,
+                  onChanged: (v) => setState(() => _pickup = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(context.tr('Cash / pay on delivery', 'कैश / डिलीवरी पर भुगतान')),
+                  subtitle: Text(
+                    context.tr('UPI and online payment come in the next update', 'UPI और ऑनलाइन भुगतान अगले अपडेट में'),
                   ),
-                  style: t.textTheme.bodySmall,
+                  value: _cod,
+                  onChanged: (v) => setState(() => _cod = v),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.tr('Time slots customers can choose', 'ग्राहक कौन सा समय चुन सकते हैं'),
+                  style: t.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final slot in {..._slotChoices, ..._slots}.toList()..sort())
+                      FilterChip(
+                        label: Text(prettySlot(slot)),
+                        selected: _slots.contains(slot),
+                        onSelected: (on) => setState(() => on ? _slots.add(slot) : _slots.remove(slot)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: _lead,
+                  decoration: InputDecoration(
+                    labelText: context.tr('Earliest slot today starts after', 'आज का सबसे पहला स्लॉट कितनी देर बाद'),
+                  ),
+                  items: [
+                    for (final m in [30, 60, 90, 120, 180])
+                      DropdownMenuItem(value: m, child: Text(context.tr('$m minutes', '$m मिनट'))),
+                  ],
+                  onChanged: (v) => setState(() => _lead = v ?? _lead),
                 ),
               ],
             ),

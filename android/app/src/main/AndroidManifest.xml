@@ -2,6 +2,9 @@
     <!-- Release builds have NO internet unless this is here (debug builds add it automatically). -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- New-order alerts for the shopkeeper (Android 13+ asks the user once). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="Chhabra Store"
         android:name="${applicationName}"

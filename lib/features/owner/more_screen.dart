@@ -29,6 +29,12 @@ class MoreScreen extends ConsumerWidget {
             subtitle: Text('${s.user?.email ?? ''} · $role'),
           ),
           const Divider(),
+          if (s.can(Perm.offers))
+            _Tile(
+              Icons.local_offer_outlined,
+              context.tr('Offers & coupons', 'ऑफ़र और कूपन'),
+              () => context.push('/owner/offers'),
+            ),
           _Tile(Icons.category_outlined, context.tr('Categories', 'कैटेगरी'), () => context.push('/owner/categories')),
           _Tile(
             Icons.add_photo_alternate_outlined,

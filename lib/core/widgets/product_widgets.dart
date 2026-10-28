@@ -9,6 +9,7 @@ import '../i18n.dart';
 import '../money.dart';
 import '../theme.dart';
 import '../units.dart';
+import 'cart_widgets.dart';
 import 'common.dart';
 
 /// Product photo (cached, downsized in memory) or a tidy emoji placeholder.
@@ -114,10 +115,11 @@ class PriceTag extends StatelessWidget {
 
 /// Quick-commerce style product card used in grids.
 class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.product, required this.catalog, this.onTap});
+  const ProductCard({super.key, required this.product, required this.catalog, this.onTap, this.showAdd = true});
   final Product product;
   final Catalog catalog;
   final VoidCallback? onTap;
+  final bool showAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +127,7 @@ class ProductCard extends StatelessWidget {
     final v = product.defaultVariant;
     final outOfStock = v == null || !v.inStock;
     final sizes = product.activeVariants.length;
+    final offer = catalog.liveOffersFor(product, DateTime.now()).firstOrNull;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -146,6 +149,25 @@ class ProductCard extends StatelessWidget {
                         context.tr('${v.percentOffMrp}% OFF', '${v.percentOffMrp}% छूट'),
                         color: Brand.saffronDeep,
                         filled: true,
+                      ),
+                    ),
+                  if (offer != null)
+                    Positioned(
+                      left: 6,
+                      right: 6,
+                      bottom: 6,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(color: Brand.greenDeep, borderRadius: BorderRadius.circular(6)),
+                          child: Text(
+                            context.pick(offer.title, offer.titleHi),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       ),
                     ),
                   if (outOfStock)
@@ -209,6 +231,10 @@ class ProductCard extends StatelessWidget {
                         ],
                       ],
                     ),
+                  if (v != null && showAdd) ...[
+                    const SizedBox(height: 8),
+                    AddToCartButton(product: product, variant: v),
+                  ],
                 ],
               ),
             ),
@@ -225,7 +251,8 @@ double productCardTextHeight(BuildContext context) {
   final t = Theme.of(context).textTheme;
   final scaler = MediaQuery.textScalerOf(context);
   double line(TextStyle? s) => scaler.scale(s?.fontSize ?? 14) * (s?.height ?? 1.3);
-  return 2 * line(t.bodyLarge) + line(t.bodySmall) + line(t.titleMedium) + 8 + 18 + 4;
+  // + 8 gap + 38 ADD button
+  return 2 * line(t.bodyLarge) + line(t.bodySmall) + line(t.titleMedium) + 8 + 18 + 4 + 46;
 }
 
 /// Grid layout for product cards that stays correct with large system fonts.

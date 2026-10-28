@@ -12,8 +12,8 @@ Built with Flutter + Supabase. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 
 |---|---|---|
 | 1 | Login, roles, products & prices, categories, photos, demo mode | ✅ done |
 | 1+ | AI photo recognition (Gemini), bulk photos | ✅ done |
-| 2 | Customer cart, server-side discounts/coupons, orders + live alerts | next |
-| 3 | Payments: UPI intent, Razorpay (webhook), Cash on Delivery | |
+| 2 | Customer cart, server-side discounts/coupons, orders + live alerts | ✅ done |
+| 3 | Payments: UPI intent, Razorpay (webhook), Cash on Delivery | next |
 | 4 | Counter billing (offline), barcode, WhatsApp bill, udhaar/khata | |
 | 5 | Reports, staff roles UI, notifications, CSV import/export | |
 | 6 | Polish, privacy/terms pages, Play Store prep | |
@@ -100,6 +100,23 @@ Lets you add products by just taking a photo: AI reads the name, Hindi name, siz
 Limit: 300 photos per person per day (protects your free quota).
 
 ---
+
+## Online orders (Phase 2): how it works
+
+**Customer:** ADD → cart (− / +, loose items by weight) → coupon → **Checkout** → address or pickup → time slot → **Place order** → live tracking in **Orders**. Cancel is possible until the shop accepts. **Order again** refills the cart.
+
+**Shop:** the **Orders** tab rings (bell + phone notification) when an order arrives while the app is open or in the background. Open it → **Accept order** → **Mark packed** → **Out for delivery** / **Ready for pickup** → **Mark delivered** (cash orders become "Paid"). Item out of stock? ⋮ → **Not available**: the bill goes down by that item and stock is put back.
+
+**Offers & coupons:** More → **Offers & coupons**.
+- Each item gets its single best offer (product %, ₹ off per piece/kg, category %, Buy X Get Y).
+- One bill offer applies on top (₹ off / % off above ₹X).
+- A coupon comes last. Coupons are once per customer by default, and can be secret or shown in the app.
+
+**Prices are decided by the server.** The app only shows them. If a price changes while a customer is checking out, the order is stopped and they see the new total.
+
+**Settings:** More → Shop details → *Online orders*: delivery / pickup / cash on delivery on-off, time slots, how soon today's first slot can be.
+
+**Not yet:** online UPI/Razorpay payment (Phase 3). Alerts when the app is fully closed need Firebase push (Phase 5).
 
 ## Adding products & photos
 

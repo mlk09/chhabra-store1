@@ -1,5 +1,6 @@
 import '../../core/units.dart';
 import '../models/catalog.dart';
+import '../models/order.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../models/shop.dart';
@@ -291,5 +292,62 @@ Catalog buildDemoCatalog() {
     p('c-home', 'Agarbatti', 'अगरबत्ती', '🪔', [('1 pack', pack, 1, 50, 45, 20)], brand: 'Cycle', gst: 5),
   ];
 
-  return Catalog(shop: shop, categories: categories, products: products);
+  String pid(String startsWith) => products.firstWhere((p) => p.name.startsWith(startsWith)).id;
+  final created = DateTime(2026, 1, 1);
+  final offers = <Offer>[
+    Offer(
+      id: 'o-oil',
+      title: 'Oil & Ghee 5% off',
+      titleHi: 'तेल और घी पर 5% छूट',
+      kind: OfferKind.categoryPercent,
+      categoryId: 'c-oil',
+      percent: 5,
+      createdAt: created,
+    ),
+    Offer(
+      id: 'o-parle',
+      title: 'Parle-G: Buy 2 Get 1 free',
+      titleHi: 'पारले-जी: 2 लो 1 फ़्री',
+      kind: OfferKind.bxgy,
+      productId: pid('Parle-G'),
+      buyQty: 2,
+      getQty: 1,
+      createdAt: created.add(const Duration(minutes: 1)),
+    ),
+    Offer(
+      id: 'o-cart50',
+      title: '₹50 off above ₹500',
+      titleHi: '₹500 से ऊपर ₹50 छूट',
+      kind: OfferKind.cartFlat,
+      amount: 5000,
+      minOrder: 50000,
+      createdAt: created.add(const Duration(minutes: 2)),
+    ),
+  ];
+
+  return Catalog(shop: shop, categories: categories, products: products, offers: offers);
 }
+
+/// Sample coupon codes for Demo mode.
+List<Coupon> buildDemoCoupons() => const [
+  Coupon(
+    id: 'cp-welcome',
+    code: 'WELCOME50',
+    title: '₹50 off your first order above ₹300',
+    kind: CouponKind.flat,
+    value: 5000,
+    minOrder: 30000,
+    isPublic: true,
+  ),
+  Coupon(
+    id: 'cp-ten',
+    code: 'CHHABRA10',
+    title: '10% off, up to ₹40',
+    kind: CouponKind.percent,
+    value: 10,
+    maxDiscount: 4000,
+    minOrder: 20000,
+    perUserLimit: 5,
+    isPublic: true,
+  ),
+];

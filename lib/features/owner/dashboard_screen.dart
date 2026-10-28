@@ -4,12 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
+import '../../core/money.dart';
+import '../../core/order_state.dart';
 import '../../core/theme.dart';
 import '../../core/units.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/product_widgets.dart';
 import '../../data/models/catalog.dart';
 import '../../data/models/member.dart';
+import '../../data/models/order.dart';
 import '../../data/models/product.dart';
 import '../common/demo_banner.dart';
 
@@ -84,6 +87,7 @@ class _Body extends StatelessWidget {
             style: t.textTheme.titleMedium?.copyWith(color: t.colorScheme.onSurfaceVariant),
           ),
         ),
+        const _TodayOrders(),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: LayoutBuilder(
@@ -145,6 +149,7 @@ class _Body extends StatelessWidget {
                 label: context.tr('Add product', 'सामान जोड़ें'),
                 route: '/owner/product/new',
               ),
+              _Action(icon: Icons.local_offer_rounded, label: context.tr('Offers', 'ऑफ़र'), route: '/owner/offers'),
               _Action(
                 icon: Icons.add_photo_alternate_rounded,
                 label: context.tr('Bulk photos', 'एक साथ फ़ोटो'),
@@ -307,6 +312,70 @@ class _AlertTile extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => context.push('/owner/product/${product.id}'),
+    );
+  }
+}
+
+/// "Today: 5 orders · ₹2,340 · 2 waiting" — tap to open Orders.
+class _TodayOrders extends ConsumerWidget {
+  const _TodayOrders();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final orders = ref.watch(shopOrdersProvider).value ?? const <Order>[];
+    final now = DateTime.now();
+    final today = orders
+        .where((o) => o.status != OrderStatus.cancelled && DateUtils.isSameDay(o.createdAt, now))
+        .toList();
+    final waiting = orders.where((o) => o.status == OrderStatus.newOrder).length;
+    final sales = today.fold<int>(0, (s, o) => s + o.total);
+    final t = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Card(
+        color: waiting > 0 ? Brand.saffron.withValues(alpha: 0.16) : null,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.go('/owner/orders'),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.receipt_long_rounded,
+                  color: waiting > 0 ? Brand.saffronDeep : t.colorScheme.primary,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.tr(
+                          'Today: ${today.length} orders · ${formatMoney(sales)}',
+                          'आज: ${today.length} ऑर्डर · ${formatMoney(sales)}',
+                        ),
+                        style: t.textTheme.titleMedium,
+                      ),
+                      Text(
+                        waiting > 0
+                            ? context.tr('$waiting new — tap to accept', '$waiting नए — स्वीकार करने के लिए दबाएँ')
+                            : context.tr('No new orders waiting', 'कोई नया ऑर्डर बाकी नहीं'),
+                        style: TextStyle(
+                          color: waiting > 0 ? Brand.saffronDeep : null,
+                          fontWeight: waiting > 0 ? FontWeight.w700 : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

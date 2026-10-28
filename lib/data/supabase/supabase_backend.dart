@@ -11,6 +11,7 @@ import '../backend.dart';
 import '../models/catalog.dart';
 import '../models/category.dart';
 import '../models/member.dart';
+import '../models/order.dart';
 import '../models/product.dart';
 import '../models/product_guess.dart';
 import '../models/shop.dart';
@@ -153,10 +154,13 @@ class SupabaseBackend implements Backend {
       }
     }
 
+    final offers = await _db.from('offers').select().eq('shop_id', shop.id).order('created_at');
+
     return Catalog(
       shop: shop,
       categories: cats.map(Category.fromJson).toList(),
       products: products.map(Product.fromJson).toList(),
+      offers: offers.map(Offer.fromJson).toList(),
     );
   });
 
@@ -254,6 +258,155 @@ class SupabaseBackend implements Backend {
     final row = await _db.from('shops').update(shop.toEditableJson()).eq('id', shop.id).select().single();
     return Shop.fromJson(row);
   });
+
+  // ── Offers & coupons ──
+
+  Map<String, dynamic> _withShop(Map<String, dynamic> row, String shopId) =>
+      {...row, 'shop_id': shopId}..removeWhere((k, v) => k == 'created_at' && v == null);
+
+  @override
+  Future<Offer> saveOffer(Offer offer) => _guard(() async {
+    final shopId = await _requireShopId();
+    final row = await _db.from('offers').upsert(_withShop(offer.toJson(), shopId)).select().single();
+    return Offer.fromJson(row);
+  });
+
+  @override
+  Future<void> deleteOffer(String offerId) => _guard(() => _db.from('offers').delete().eq('id', offerId));
+
+  @override
+  Future<List<Coupon>> loadCoupons() => _guard(() async {
+    final shopId = await _requireShopId();
+    final rows = await _db.from('coupons').select().eq('shop_id', shopId).order('created_at');
+    return rows.map(Coupon.fromJson).toList();
+  });
+
+  @override
+  Future<Coupon> saveCoupon(Coupon coupon) => _guard(() async {
+    final shopId = await _requireShopId();
+    final json = _withShop(coupon.toJson(), shopId)..remove('used_count');
+    final row = await _db.from('coupons').upsert(json).select().single();
+    return Coupon.fromJson(row);
+  });
+
+  @override
+  Future<void> deleteCoupon(String couponId) => _guard(() => _db.from('coupons').delete().eq('id', couponId));
+
+  // ── Cart & checkout ──
+
+  @override
+  Future<Quote> quoteCart({required List<CartItem> items, String? coupon, required Fulfilment fulfilment}) =>
+      _guard(() async {
+        final res = await _db.rpc(
+          'quote_cart',
+          params: {
+            'p_shop': await _requireShopId(),
+            'p_items': items.map((i) => i.toJson()).toList(),
+            'p_coupon': coupon,
+            'p_fulfilment': fulfilment.name,
+          },
+        );
+        return Quote.fromJson((res as Map).cast<String, dynamic>());
+      });
+
+  @override
+  Future<String> placeOrder(OrderRequest r) => _guard(() async {
+    final res = await _db.rpc(
+      'place_order',
+      params: {
+        'p_shop': await _requireShopId(),
+        'p_items': r.items.map((i) => i.toJson()).toList(),
+        'p_fulfilment': r.fulfilment.name,
+        'p_payment_method': r.paymentMethod,
+        'p_slot_date': r.slotDate.toIso8601String().substring(0, 10),
+        'p_slot': r.slot,
+        'p_address_id': r.addressId,
+        'p_coupon': r.coupon,
+        'p_note': r.note,
+        'p_client_ref': r.clientRef,
+        'p_expected_total': paiseToJson(r.expectedTotal),
+      },
+    );
+    return (res as Map)['order_id'] as String;
+  });
+
+  @override
+  Future<List<Address>> addresses() => _guard(() async {
+    final rows = await _db.from('addresses').select().order('created_at');
+    return rows.map(Address.fromJson).toList();
+  });
+
+  @override
+  Future<Address> saveAddress(Address address) => _guard(() async {
+    final row = await _db.from('addresses').upsert(address.toJson()).select().single();
+    return Address.fromJson(row);
+  });
+
+  @override
+  Future<void> deleteAddress(String addressId) => _guard(() => _db.from('addresses').delete().eq('id', addressId));
+
+  // ── Orders (live via Supabase Realtime; RLS decides who sees what) ──
+
+  @override
+  Stream<List<Order>> watchMyOrders() {
+    final uid = _db.auth.currentUser?.id;
+    if (uid == null) return Stream.value(const []);
+    return _db
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('customer_id', uid)
+        .order('created_at')
+        .limit(100)
+        .map((rows) => rows.map(Order.fromJson).toList());
+  }
+
+  @override
+  Stream<List<Order>> watchShopOrders() async* {
+    final shopId = await _requireShopId();
+    yield* _db
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('shop_id', shopId)
+        .order('created_at')
+        .limit(200)
+        .map((rows) => rows.map(Order.fromJson).toList());
+  }
+
+  @override
+  Stream<Order> watchOrder(String orderId) => _db
+      .from('orders')
+      .stream(primaryKey: ['id'])
+      .eq('id', orderId)
+      .asyncMap(
+        (_) => _guard(() async {
+          final row = await _db.from('orders').select('*, order_items(*), order_events(*)').eq('id', orderId).single();
+          return Order.fromJson(row);
+        }),
+      );
+
+  @override
+  Future<List<String>> recentlyBoughtProductIds() => _guard(() async {
+    final uid = _db.auth.currentUser?.id;
+    if (uid == null) return const <String>[];
+    final rows = await _db
+        .from('order_items')
+        .select('product_id, orders!inner(customer_id, created_at)')
+        .eq('orders.customer_id', uid)
+        .not('product_id', 'is', null)
+        .limit(200);
+    rows.sort(
+      (a, b) => ((b['orders'] as Map)['created_at'] as String).compareTo((a['orders'] as Map)['created_at'] as String),
+    );
+    return {for (final r in rows) r['product_id'] as String}.toList();
+  });
+
+  @override
+  Future<void> setOrderStatus(String orderId, OrderStatus status, {String? note}) =>
+      _guard(() => _db.rpc('set_order_status', params: {'p_order': orderId, 'p_status': status.code, 'p_note': note}));
+
+  @override
+  Future<void> markItemUnavailable(String orderItemId) =>
+      _guard(() => _db.rpc('mark_item_unavailable', params: {'p_item': orderItemId}));
 
   @override
   Future<ProductGuess> identifyProduct({
@@ -370,6 +523,13 @@ class SupabaseBackend implements Backend {
 
   AppException _dbError(PostgrestException e) {
     final m = e.message;
+    // Order/cart rules raise a JSON detail with a machine-readable code.
+    if (e.code == 'P0001' && e.details != null) {
+      try {
+        final d = (jsonDecode(e.details.toString()) as Map).cast<String, dynamic>();
+        if (d['code'] is String) return AppException(m, null, d['code'] as String, d);
+      } catch (_) {}
+    }
     if (e.code == '42501' || m.contains('permission')) {
       return AppException(
         m.contains('price') ? 'You do not have permission to change prices.' : 'You do not have permission for this.',

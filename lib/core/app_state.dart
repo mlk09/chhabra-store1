@@ -10,6 +10,7 @@ import '../data/local/local_store.dart';
 import '../data/models/catalog.dart';
 import '../data/models/category.dart';
 import '../data/models/member.dart';
+import '../data/models/order.dart';
 import '../data/models/product.dart';
 import '../data/models/shop.dart';
 import '../data/supabase/supabase_backend.dart';
@@ -276,6 +277,11 @@ class CatalogController extends AsyncNotifier<Catalog> {
     final saved = await _session.backend.updateShop(shop);
     _update((c) => c.copyWith(shop: saved));
   }
+
+  /// Offers are saved by the offers screen; this keeps the cached catalog in step.
+  Future<void> applyOffer(Offer offer) async => _update((c) => c.withOffer(offer));
+
+  Future<void> removeOffer(String offerId) async => _update((c) => c.withoutOffer(offerId));
 }
 
 final catalogProvider = AsyncNotifierProvider<CatalogController, Catalog>(CatalogController.new);

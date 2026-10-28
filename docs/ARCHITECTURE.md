@@ -77,7 +77,7 @@ Money = `numeric(12,2)` rupees on the server and integer **paise** in Dart (no f
 | `product_variants` | product_id, label ("5 kg"), unit, unit_qty, mrp, price, barcode, stock, expiry_date, is_active | Every product has ≥ 1 variant. Loose item = unit `kg`, price per kg, customer buys 0.25 |
 | `variant_costs` | variant_id, cost_price | **Separate table** so customers can never read purchase price |
 
-### Phase 2
+### Phase 2 (built: migration 0003_orders.sql)
 | `offers` | type (product % / ₹, category %, cart flat / %, free delivery, buy X get Y), min_order, dates, active |
 | `coupons` | code, type, value, max_discount, min_order, dates, usage_limit, per_user_limit, used_count |
 | `coupon_redemptions` | coupon_id, user_id, order_id |

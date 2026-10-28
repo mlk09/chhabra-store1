@@ -7,15 +7,21 @@ import '../features/auth/auth_screens.dart';
 import '../features/auth/welcome_screen.dart';
 import '../features/common/settings_screen.dart';
 import '../features/customer/account_screen.dart';
+import '../features/customer/cart_screen.dart';
 import '../features/customer/category_screen.dart';
+import '../features/customer/checkout_screen.dart';
 import '../features/customer/customer_home.dart';
+import '../features/customer/customer_shell.dart';
 import '../features/customer/product_screen.dart';
 import '../features/customer/search_screen.dart';
 import '../features/owner/bulk_photos_screen.dart';
 import '../features/owner/bulk_price_screen.dart';
 import '../features/owner/categories_screen.dart';
 import '../features/owner/dashboard_screen.dart';
+import '../features/orders/order_detail_screen.dart';
+import '../features/orders/order_lists.dart';
 import '../features/owner/more_screen.dart';
+import '../features/owner/offers_screen.dart';
 import '../features/owner/owner_shell.dart';
 import '../features/owner/product_editor_screen.dart';
 import '../features/owner/products_screen.dart';
@@ -65,27 +71,60 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/forgot', builder: (_, _) => const ForgotPasswordScreen()),
       GoRoute(path: '/reset-password', builder: (_, _) => const ResetPasswordScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
-      GoRoute(path: '/account', builder: (_, _) => const AccountScreen()),
-      GoRoute(
-        path: '/shop',
-        builder: (_, _) => const CustomerHome(),
-        routes: [
-          GoRoute(path: 'search', builder: (_, _) => const SearchScreen()),
-          GoRoute(
-            path: 'c/:id',
-            builder: (_, st) => CategoryScreen(categoryId: st.pathParameters['id']!),
+      StatefulShellRoute.indexedStack(
+        builder: (_, _, shell) => CustomerShell(shell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/shop',
+                builder: (_, _) => const CustomerHome(),
+                routes: [
+                  GoRoute(path: 'search', builder: (_, _) => const SearchScreen()),
+                  GoRoute(
+                    path: 'c/:id',
+                    builder: (_, st) => CategoryScreen(categoryId: st.pathParameters['id']!),
+                  ),
+                  GoRoute(
+                    path: 'p/:id',
+                    builder: (_, st) => ProductScreen(productId: st.pathParameters['id']!),
+                  ),
+                ],
+              ),
+            ],
           ),
-          GoRoute(
-            path: 'p/:id',
-            builder: (_, st) => ProductScreen(productId: st.pathParameters['id']!),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/orders',
+                builder: (_, _) => const MyOrdersScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (_, st) => OrderDetailScreen(
+                      orderId: st.pathParameters['id']!,
+                      justPlaced: st.uri.queryParameters['placed'] == '1',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/account', builder: (_, _) => const AccountScreen())],
           ),
         ],
       ),
+      GoRoute(path: '/cart', parentNavigatorKey: _rootKey, builder: (_, _) => const CartScreen()),
+      GoRoute(path: '/checkout', parentNavigatorKey: _rootKey, builder: (_, _) => const CheckoutScreen()),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => OwnerShell(shell: shell),
         branches: [
           StatefulShellBranch(
             routes: [GoRoute(path: '/owner', builder: (_, _) => const DashboardScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/owner/orders', builder: (_, _) => const ShopOrdersScreen())],
           ),
           StatefulShellBranch(
             routes: [GoRoute(path: '/owner/products', builder: (_, _) => const ProductsScreen())],
@@ -103,6 +142,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           barcode: st.uri.queryParameters['barcode'],
         ),
       ),
+      GoRoute(
+        path: '/owner/order/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, st) => OrderDetailScreen(orderId: st.pathParameters['id']!, shopView: true),
+      ),
+      GoRoute(path: '/owner/offers', parentNavigatorKey: _rootKey, builder: (_, _) => const OffersScreen()),
       GoRoute(path: '/owner/categories', parentNavigatorKey: _rootKey, builder: (_, _) => const CategoriesScreen()),
       GoRoute(path: '/owner/bulk-price', parentNavigatorKey: _rootKey, builder: (_, _) => const BulkPriceScreen()),
       GoRoute(path: '/owner/bulk-photos', parentNavigatorKey: _rootKey, builder: (_, _) => const BulkPhotosScreen()),

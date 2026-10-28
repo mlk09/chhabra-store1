@@ -22,7 +22,16 @@ class Shop {
     this.isOpen = true,
     this.holidayMode = false,
     this.holidayNote,
+    this.timeSlots = defaultSlots,
+    this.slotLeadMinutes = 60,
+    this.deliveryEnabled = true,
+    this.pickupEnabled = true,
+    this.codEnabled = true,
+    this.upiDirectEnabled = true,
+    this.gatewayEnabled = false,
   });
+
+  static const defaultSlots = ['09:00-12:00', '12:00-15:00', '15:00-18:00', '18:00-21:00'];
 
   final String id;
   final String name;
@@ -45,6 +54,19 @@ class Shop {
   final bool holidayMode;
   final String? holidayNote;
 
+  /// Delivery/pickup windows like "09:00-12:00" (shop's local time, India).
+  final List<String> timeSlots;
+
+  /// A slot today must start at least this many minutes from now.
+  final int slotLeadMinutes;
+  final bool deliveryEnabled;
+  final bool pickupEnabled;
+  final bool codEnabled;
+  final bool upiDirectEnabled;
+  final bool gatewayEnabled;
+
+  bool get takingOrders => isOpen && !holidayMode;
+
   factory Shop.fromJson(Map<String, dynamic> j) => Shop(
     id: j['id'] as String,
     name: j['name'] as String,
@@ -66,6 +88,13 @@ class Shop {
     isOpen: j['is_open'] as bool? ?? true,
     holidayMode: j['holiday_mode'] as bool? ?? false,
     holidayNote: j['holiday_note'] as String?,
+    timeSlots: (j['time_slots'] as List?)?.whereType<String>().toList() ?? defaultSlots,
+    slotLeadMinutes: (j['slot_lead_minutes'] as num?)?.toInt() ?? 60,
+    deliveryEnabled: j['delivery_enabled'] as bool? ?? true,
+    pickupEnabled: j['pickup_enabled'] as bool? ?? true,
+    codEnabled: j['cod_enabled'] as bool? ?? true,
+    upiDirectEnabled: j['upi_direct_enabled'] as bool? ?? true,
+    gatewayEnabled: j['gateway_enabled'] as bool? ?? false,
   );
 
   Map<String, dynamic> toJson() => {
@@ -89,7 +118,16 @@ class Shop {
     'is_open': isOpen,
     'holiday_mode': holidayMode,
     'holiday_note': holidayNote,
+    'time_slots': timeSlots,
+    'slot_lead_minutes': slotLeadMinutes,
+    'delivery_enabled': deliveryEnabled,
+    'pickup_enabled': pickupEnabled,
+    'cod_enabled': codEnabled,
+    'upi_direct_enabled': upiDirectEnabled,
+    'gateway_enabled': gatewayEnabled,
   };
+
+  Shop copyWithJson(Map<String, dynamic> changes) => Shop.fromJson({...toJson(), ...changes});
 
   /// Fields the shop-settings screen may change (id/slug are fixed).
   Map<String, dynamic> toEditableJson() => toJson()..remove('id');

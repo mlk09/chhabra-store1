@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'models/catalog.dart';
 import 'models/category.dart';
 import 'models/member.dart';
+import 'models/order.dart';
 import 'models/product.dart';
 import 'models/product_guess.dart';
 import 'models/shop.dart';
@@ -16,9 +17,13 @@ class ProductPhoto {
 
 /// Error with a message that is safe and useful to show the shopkeeper.
 class AppException implements Exception {
-  const AppException(this.message, [this.messageHi]);
+  const AppException(this.message, [this.messageHi, this.code, this.data = const {}]);
   final String message;
   final String? messageHi;
+
+  /// Machine-readable reason from the server, e.g. 'price_changed', 'bad_slot'.
+  final String? code;
+  final Map<String, dynamic> data;
   @override
   String toString() => message;
 }
@@ -67,6 +72,43 @@ abstract class Backend {
   });
   Future<Shop> updateShop(Shop shop);
 
+  // ── Offers & coupons (owner) ──
+  Future<Offer> saveOffer(Offer offer);
+  Future<void> deleteOffer(String offerId);
+
+  /// Owner/offer staff: all coupons. Customers: only public ones.
+  Future<List<Coupon>> loadCoupons();
+  Future<Coupon> saveCoupon(Coupon coupon);
+  Future<void> deleteCoupon(String couponId);
+
+  // ── Cart & checkout ──
+  /// The bill for a cart, priced by the server (or the demo copy of the rules).
+  Future<Quote> quoteCart({required List<CartItem> items, String? coupon, required Fulfilment fulfilment});
+
+  /// Places the order. [expectedTotal] is what the customer saw; if prices
+  /// changed meanwhile the server refuses with code 'price_changed'.
+  /// Returns the new order id.
+  Future<String> placeOrder(OrderRequest request);
+
+  Future<List<Address>> addresses();
+  Future<Address> saveAddress(Address address);
+  Future<void> deleteAddress(String addressId);
+
+  // ── Orders ──
+  /// The customer's own orders, newest first, kept live.
+  Stream<List<Order>> watchMyOrders();
+
+  /// Shop side: recent orders, newest first, kept live (new-order alerts).
+  Stream<List<Order>> watchShopOrders();
+
+  /// One order with items + timeline, kept live.
+  Stream<Order> watchOrder(String orderId);
+  Future<void> setOrderStatus(String orderId, OrderStatus status, {String? note});
+
+  /// Products the logged-in customer bought before, most recent first ("Buy again").
+  Future<List<String>> recentlyBoughtProductIds();
+  Future<void> markItemUnavailable(String orderItemId);
+
   /// Reads a product photo with AI (name, Hindi name, brand, size, MRP,
   /// category). [jpeg] should be the compressed photo, not the raw camera file.
   Future<ProductGuess> identifyProduct({
@@ -80,4 +122,32 @@ abstract class Backend {
 
   /// Photo bytes kept in memory (demo shop only).
   Uint8List? localImage(String? path);
+}
+
+class OrderRequest {
+  const OrderRequest({
+    required this.items,
+    required this.fulfilment,
+    required this.paymentMethod,
+    required this.slotDate,
+    required this.slot,
+    this.addressId,
+    this.coupon,
+    this.note,
+    required this.clientRef,
+    required this.expectedTotal,
+  });
+
+  final List<CartItem> items;
+  final Fulfilment fulfilment;
+  final String paymentMethod;
+  final DateTime slotDate;
+  final String slot;
+  final String? addressId;
+  final String? coupon;
+  final String? note;
+
+  /// Same id on a retry → the server returns the same order (no duplicates).
+  final String clientRef;
+  final int expectedTotal;
 }

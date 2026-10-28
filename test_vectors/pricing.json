@@ -1,0 +1,812 @@
+{
+ "_about": "Shared pricing cases. Checked by supabase/tests/20_pricing_test.sql (server) AND test/pricing_test.dart (app copy). Change both engines together.",
+ "now": "2026-10-28T10:00:00Z",
+ "shop": {
+  "delivery_charge": 20,
+  "free_delivery_above": 499,
+  "min_order": 100
+ },
+ "categories": [
+  {
+   "id": "c0000000-0000-4000-8000-000000000001",
+   "name": "Staples"
+  },
+  {
+   "id": "c0000000-0000-4000-8000-000000000002",
+   "name": "Oil & Ghee"
+  },
+  {
+   "id": "c0000000-0000-4000-8000-000000000003",
+   "name": "Snacks"
+  }
+ ],
+ "products": [
+  {
+   "id": "a0000000-0000-4000-8000-000000000001",
+   "category_id": "c0000000-0000-4000-8000-000000000001",
+   "name": "Atta",
+   "is_loose": false,
+   "is_active": true,
+   "variants": [
+    {
+     "id": "b0000000-0000-4000-8000-000000000001",
+     "label": "5 kg",
+     "unit": "kg",
+     "mrp": 315,
+     "price": 279,
+     "stock": 10,
+     "track_stock": true,
+     "is_active": true
+    }
+   ]
+  },
+  {
+   "id": "a0000000-0000-4000-8000-000000000002",
+   "category_id": "c0000000-0000-4000-8000-000000000002",
+   "name": "Mustard Oil",
+   "is_loose": false,
+   "is_active": true,
+   "variants": [
+    {
+     "id": "b0000000-0000-4000-8000-000000000002",
+     "label": "1 L",
+     "unit": "l",
+     "mrp": 195,
+     "price": 172,
+     "stock": 20,
+     "track_stock": true,
+     "is_active": true
+    }
+   ]
+  },
+  {
+   "id": "a0000000-0000-4000-8000-000000000003",
+   "category_id": "c0000000-0000-4000-8000-000000000003",
+   "name": "Biscuit",
+   "is_loose": false,
+   "is_active": true,
+   "variants": [
+    {
+     "id": "b0000000-0000-4000-8000-000000000003",
+     "label": "250 g",
+     "unit": "g",
+     "mrp": 25,
+     "price": 25,
+     "stock": 50,
+     "track_stock": true,
+     "is_active": true
+    }
+   ]
+  },
+  {
+   "id": "a0000000-0000-4000-8000-000000000004",
+   "category_id": "c0000000-0000-4000-8000-000000000001",
+   "name": "Sugar (Loose)",
+   "is_loose": true,
+   "is_active": true,
+   "variants": [
+    {
+     "id": "b0000000-0000-4000-8000-000000000004",
+     "label": "per kg",
+     "unit": "kg",
+     "mrp": 46,
+     "price": 44,
+     "stock": 30,
+     "track_stock": true,
+     "is_active": true
+    }
+   ]
+  },
+  {
+   "id": "a0000000-0000-4000-8000-000000000005",
+   "category_id": "c0000000-0000-4000-8000-000000000001",
+   "name": "Salt",
+   "is_loose": false,
+   "is_active": true,
+   "variants": [
+    {
+     "id": "b0000000-0000-4000-8000-000000000005",
+     "label": "1 kg",
+     "unit": "kg",
+     "mrp": 30,
+     "price": 28,
+     "stock": 2,
+     "track_stock": true,
+     "is_active": true
+    }
+   ]
+  },
+  {
+   "id": "a0000000-0000-4000-8000-000000000006",
+   "category_id": "c0000000-0000-4000-8000-000000000001",
+   "name": "Soap",
+   "is_loose": false,
+   "is_active": false,
+   "variants": [
+    {
+     "id": "b0000000-0000-4000-8000-000000000006",
+     "label": "100 g",
+     "unit": "g",
+     "mrp": 45,
+     "price": 40,
+     "stock": 10,
+     "track_stock": true,
+     "is_active": true
+    }
+   ]
+  },
+  {
+   "id": "a0000000-0000-4000-8000-000000000007",
+   "category_id": "c0000000-0000-4000-8000-000000000002",
+   "name": "Ghee",
+   "is_loose": false,
+   "is_active": true,
+   "variants": [
+    {
+     "id": "b0000000-0000-4000-8000-000000000007",
+     "label": "1 L",
+     "unit": "l",
+     "mrp": 330,
+     "price": 315,
+     "stock": 5,
+     "track_stock": true,
+     "is_active": true
+    }
+   ]
+  }
+ ],
+ "offers": [
+  {
+   "id": "d0000000-0000-4000-8000-000000000001",
+   "title": "Oil 10% off",
+   "kind": "product_percent",
+   "product_id": "a0000000-0000-4000-8000-000000000002",
+   "category_id": null,
+   "percent": 10,
+   "amount": null,
+   "min_order": 0,
+   "max_discount": null,
+   "buy_qty": null,
+   "get_qty": null,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true,
+   "created_at": "2026-10-01T00:01:00Z"
+  },
+  {
+   "id": "d0000000-0000-4000-8000-000000000002",
+   "title": "Oil & Ghee 5% off",
+   "kind": "category_percent",
+   "product_id": null,
+   "category_id": "c0000000-0000-4000-8000-000000000002",
+   "percent": 5,
+   "amount": null,
+   "min_order": 0,
+   "max_discount": null,
+   "buy_qty": null,
+   "get_qty": null,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true,
+   "created_at": "2026-10-01T00:02:00Z"
+  },
+  {
+   "id": "d0000000-0000-4000-8000-000000000003",
+   "title": "Buy 2 Get 1",
+   "kind": "bxgy",
+   "product_id": "a0000000-0000-4000-8000-000000000003",
+   "category_id": null,
+   "percent": null,
+   "amount": null,
+   "min_order": 0,
+   "max_discount": null,
+   "buy_qty": 2,
+   "get_qty": 1,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true,
+   "created_at": "2026-10-01T00:03:00Z"
+  },
+  {
+   "id": "d0000000-0000-4000-8000-000000000004",
+   "title": "₹3 off per kg",
+   "kind": "product_flat",
+   "product_id": "a0000000-0000-4000-8000-000000000004",
+   "category_id": null,
+   "percent": null,
+   "amount": 3,
+   "min_order": 0,
+   "max_discount": null,
+   "buy_qty": null,
+   "get_qty": null,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true,
+   "created_at": "2026-10-01T00:04:00Z"
+  },
+  {
+   "id": "d0000000-0000-4000-8000-000000000005",
+   "title": "₹50 off above ₹500",
+   "kind": "cart_flat",
+   "product_id": null,
+   "category_id": null,
+   "percent": null,
+   "amount": 50,
+   "min_order": 500,
+   "max_discount": null,
+   "buy_qty": null,
+   "get_qty": null,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true,
+   "created_at": "2026-10-01T00:05:00Z"
+  },
+  {
+   "id": "d0000000-0000-4000-8000-000000000006",
+   "title": "10% off above ₹1000",
+   "kind": "cart_percent",
+   "product_id": null,
+   "category_id": null,
+   "percent": 10,
+   "amount": null,
+   "min_order": 1000,
+   "max_discount": 120,
+   "buy_qty": null,
+   "get_qty": null,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true,
+   "created_at": "2026-10-01T00:06:00Z"
+  },
+  {
+   "id": "d0000000-0000-4000-8000-000000000007",
+   "title": "Old atta sale",
+   "kind": "product_percent",
+   "product_id": "a0000000-0000-4000-8000-000000000001",
+   "category_id": null,
+   "percent": 50,
+   "amount": null,
+   "min_order": 0,
+   "max_discount": null,
+   "buy_qty": null,
+   "get_qty": null,
+   "starts_at": "2026-09-01T00:00:00Z",
+   "ends_at": "2026-10-01T00:00:00Z",
+   "is_active": true,
+   "created_at": "2026-10-01T00:07:00Z"
+  },
+  {
+   "id": "d0000000-0000-4000-8000-000000000008",
+   "title": "Paused atta sale",
+   "kind": "product_percent",
+   "product_id": "a0000000-0000-4000-8000-000000000001",
+   "category_id": null,
+   "percent": 40,
+   "amount": null,
+   "min_order": 0,
+   "max_discount": null,
+   "buy_qty": null,
+   "get_qty": null,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": false,
+   "created_at": "2026-10-01T00:08:00Z"
+  }
+ ],
+ "coupons": [
+  {
+   "id": "e0000000-0000-4000-8000-000000000001",
+   "code": "SAVE20",
+   "kind": "percent",
+   "value": 20,
+   "max_discount": 60,
+   "min_order": 300,
+   "usage_limit": null,
+   "used_count": 0,
+   "per_user_limit": 1,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true
+  },
+  {
+   "id": "e0000000-0000-4000-8000-000000000002",
+   "code": "FLAT30",
+   "kind": "flat",
+   "value": 30,
+   "max_discount": null,
+   "min_order": 200,
+   "usage_limit": null,
+   "used_count": 0,
+   "per_user_limit": 1,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true
+  },
+  {
+   "id": "e0000000-0000-4000-8000-000000000003",
+   "code": "FREEDEL",
+   "kind": "free_delivery",
+   "value": 0,
+   "max_discount": null,
+   "min_order": 0,
+   "usage_limit": null,
+   "used_count": 0,
+   "per_user_limit": 1,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true
+  },
+  {
+   "id": "e0000000-0000-4000-8000-000000000004",
+   "code": "OLD",
+   "kind": "flat",
+   "value": 10,
+   "max_discount": null,
+   "min_order": 0,
+   "usage_limit": null,
+   "used_count": 0,
+   "per_user_limit": 1,
+   "starts_at": null,
+   "ends_at": "2026-10-01T00:00:00Z",
+   "is_active": true
+  },
+  {
+   "id": "e0000000-0000-4000-8000-000000000005",
+   "code": "FULL",
+   "kind": "flat",
+   "value": 10,
+   "max_discount": null,
+   "min_order": 0,
+   "usage_limit": 5,
+   "used_count": 5,
+   "per_user_limit": 1,
+   "starts_at": null,
+   "ends_at": null,
+   "is_active": true
+  },
+  {
+   "id": "e0000000-0000-4000-8000-000000000006",
+   "code": "LATER",
+   "kind": "flat",
+   "value": 10,
+   "max_discount": null,
+   "min_order": 0,
+   "usage_limit": null,
+   "used_count": 0,
+   "per_user_limit": 1,
+   "starts_at": "2026-11-01T00:00:00Z",
+   "ends_at": null,
+   "is_active": true
+  }
+ ],
+ "cases": [
+  {
+   "name": "single atta, delivery charged",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 279,
+    "item_discount": 0,
+    "cart_discount": 0,
+    "coupon_discount": 0,
+    "delivery_charge": 20,
+    "total": 299,
+    "savings": 36,
+    "below_min_order": false
+   }
+  },
+  {
+   "name": "oil: best of product 10% vs category 5%",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000002",
+     "qty": 2
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 309.6,
+    "item_discount": 34.4,
+    "total": 329.6,
+    "savings": 80.4,
+    "lines": {
+     "b0000000-0000-4000-8000-000000000002": {
+      "discount": 34.4,
+      "line_total": 309.6,
+      "offer": "Oil 10% off"
+     }
+    }
+   }
+  },
+  {
+   "name": "ghee gets category 5%",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000007",
+     "qty": 1
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 299.25,
+    "item_discount": 15.75,
+    "delivery_charge": 20,
+    "total": 319.25,
+    "lines": {
+     "b0000000-0000-4000-8000-000000000007": {
+      "offer": "Oil & Ghee 5% off"
+     }
+    }
+   }
+  },
+  {
+   "name": "buy 2 get 1: 5 biscuits → 1 free",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000003",
+     "qty": 5
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 100,
+    "item_discount": 25,
+    "total": 120,
+    "savings": 25,
+    "below_min_order": false,
+    "lines": {
+     "b0000000-0000-4000-8000-000000000003": {
+      "free_qty": 1,
+      "discount": 25
+     }
+    }
+   }
+  },
+  {
+   "name": "loose sugar 750 g with ₹3/kg off",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000004",
+     "qty": 0.75
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 30.75,
+    "item_discount": 2.25,
+    "subtotal_mrp": 34.5,
+    "total": 50.75,
+    "savings": 3.75,
+    "below_min_order": true
+   }
+  },
+  {
+   "name": "cart ₹50 off above ₹500 + free delivery",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 2
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 558,
+    "cart_discount": 50,
+    "cart_offer": "₹50 off above ₹500",
+    "delivery_charge": 0,
+    "delivery_saved": 20,
+    "total": 508,
+    "savings": 142
+   }
+  },
+  {
+   "name": "cart 10% capped at ₹120 beats ₹50",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 4
+    },
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000007",
+     "qty": 1
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 1415.25,
+    "cart_discount": 120,
+    "cart_offer": "10% off above ₹1000",
+    "total": 1295.25,
+    "subtotal_mrp": 1590,
+    "savings": 314.75
+   }
+  },
+  {
+   "name": "coupon 20% capped at ₹60",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 2
+    }
+   ],
+   "coupon": "SAVE20",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "cart_discount": 50,
+    "coupon_discount": 60,
+    "coupon_error": null,
+    "delivery_charge": 0,
+    "total": 448,
+    "savings": 202
+   }
+  },
+  {
+   "name": "coupon below its minimum",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": "SAVE20",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "coupon_discount": 0,
+    "coupon_error": "min_order",
+    "coupon_min_order": 300,
+    "total": 299
+   }
+  },
+  {
+   "name": "flat coupon",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": "FLAT30",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "coupon_discount": 30,
+    "delivery_charge": 20,
+    "total": 269,
+    "savings": 66
+   }
+  },
+  {
+   "name": "coupon typed in small letters with spaces",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": " flat30 ",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "coupon_discount": 30,
+    "coupon_code": "FLAT30",
+    "total": 269
+   }
+  },
+  {
+   "name": "free-delivery coupon",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": "FREEDEL",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "coupon_discount": 0,
+    "delivery_charge": 0,
+    "delivery_saved": 20,
+    "total": 279,
+    "savings": 56
+   }
+  },
+  {
+   "name": "expired coupon",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": "OLD",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "coupon_error": "expired",
+    "total": 299
+   }
+  },
+  {
+   "name": "coupon used up",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": "FULL",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "coupon_error": "used_up",
+    "total": 299
+   }
+  },
+  {
+   "name": "coupon not started",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": "LATER",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "coupon_error": "not_started",
+    "total": 299
+   }
+  },
+  {
+   "name": "unknown coupon",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": "NOPE",
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "coupon_error": "invalid",
+    "total": 299
+   }
+  },
+  {
+   "name": "coupon needs login",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": "FLAT30",
+   "fulfilment": "delivery",
+   "logged_in": false,
+   "expect": {
+    "coupon_error": "login_required",
+    "total": 299
+   }
+  },
+  {
+   "name": "pickup: no delivery charge, no minimum",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000003",
+     "qty": 1
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "pickup",
+   "logged_in": true,
+   "expect": {
+    "items_total": 25,
+    "delivery_charge": 0,
+    "delivery_saved": 0,
+    "total": 25,
+    "below_min_order": false
+   }
+  },
+  {
+   "name": "hidden item and short stock are left out",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000006",
+     "qty": 1
+    },
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000005",
+     "qty": 3
+    },
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 279,
+    "total": 299,
+    "unavailable": [
+     {
+      "variant_id": "b0000000-0000-4000-8000-000000000005",
+      "reason": "insufficient",
+      "available": 2
+     },
+     {
+      "variant_id": "b0000000-0000-4000-8000-000000000006",
+      "reason": "unavailable",
+      "available": 0
+     }
+    ]
+   }
+  },
+  {
+   "name": "same item twice is merged",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000003",
+     "qty": 2
+    },
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000003",
+     "qty": 1
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "expect": {
+    "items_total": 50,
+    "item_discount": 25,
+    "total": 70,
+    "below_min_order": true,
+    "lines": {
+     "b0000000-0000-4000-8000-000000000003": {
+      "qty": 3,
+      "free_qty": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "half a packet is refused",
+   "items": [
+    {
+     "variant_id": "b0000000-0000-4000-8000-000000000001",
+     "qty": 1.5
+    }
+   ],
+   "coupon": null,
+   "fulfilment": "delivery",
+   "logged_in": true,
+   "error": "bad_quantity"
+  }
+ ]
+}

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/money.dart';
+import '../../core/order_state.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/product_widgets.dart';
@@ -81,11 +82,7 @@ class _HomeBody extends StatelessWidget {
                 icon: const Icon(Icons.storefront_rounded),
                 onPressed: () => context.go('/owner'),
               ),
-            IconButton(
-              tooltip: context.tr('Account', 'खाता'),
-              icon: const Icon(Icons.account_circle_outlined, size: 30),
-              onPressed: () => context.push('/account'),
-            ),
+            const _CartIcon(),
             const SizedBox(width: 4),
           ],
         ),
@@ -110,6 +107,8 @@ class _HomeBody extends StatelessWidget {
             ),
           ),
         SliverToBoxAdapter(child: _HeroBanner(catalog: catalog)),
+        SliverToBoxAdapter(child: _OfferStrip(catalog: catalog)),
+        SliverToBoxAdapter(child: _BuyAgain(catalog: catalog)),
         SliverToBoxAdapter(child: SectionTitle(context.tr('Shop by category', 'कैटेगरी से खरीदें'))),
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -322,6 +321,130 @@ class _CategoryRow extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: items.length.clamp(0, 12),
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (_, i) => SizedBox(
+              width: cardWidth,
+              child: ProductCard(
+                product: items[i],
+                catalog: catalog,
+                onTap: () => context.push('/shop/p/${items[i].id}'),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CartIcon extends ConsumerWidget {
+  const _CartIcon();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final n = ref.watch(cartCountProvider);
+    return IconButton(
+      tooltip: context.tr('Cart', 'कार्ट'),
+      onPressed: () => context.push('/cart'),
+      icon: Badge(
+        isLabelVisible: n > 0,
+        label: Text('$n'),
+        child: const Icon(Icons.shopping_basket_outlined, size: 28),
+      ),
+    );
+  }
+}
+
+/// Running cart offers and public coupon codes, as small cards.
+class _OfferStrip extends ConsumerWidget {
+  const _OfferStrip({required this.catalog});
+  final Catalog catalog;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = DateTime.now();
+    final coupons = ref.watch(couponsProvider).value?.where((c) => c.isPublic && c.isActive).toList() ?? const [];
+    final items = <(IconData, String, String?)>[
+      for (final o in catalog.offers.where((o) => o.liveAt(now)))
+        (Icons.local_offer_rounded, context.pick(o.title, o.titleHi), null),
+      for (final c in coupons) (Icons.confirmation_number_rounded, c.title ?? c.code, c.code),
+    ];
+    if (items.isEmpty) return const SizedBox.shrink();
+    final t = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SizedBox(
+        height: 64 * (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6),
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: items.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 10),
+          itemBuilder: (_, i) {
+            final (icon, title, code) = items[i];
+            return Container(
+              width: 230,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: t.colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Brand.green.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, color: Brand.green),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        if (code != null)
+                          Text(
+                            context.tr('Use code $code', 'कोड $code लगाएँ'),
+                            maxLines: 1,
+                            style: t.textTheme.bodySmall,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _BuyAgain extends ConsumerWidget {
+  const _BuyAgain({required this.catalog});
+  final Catalog catalog;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ids = ref.watch(buyAgainProvider).value ?? const [];
+    final visible = {for (final p in catalog.visibleProducts) p.id: p};
+    final items = [for (final id in ids) ?visible[id]].take(12).toList();
+    if (items.isEmpty) return const SizedBox.shrink();
+    const cardWidth = 156.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(context.tr('Buy again', 'फिर से ख़रीदें')),
+        SizedBox(
+          height: cardWidth / 1.15 + productCardTextHeight(context),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: items.length,
             separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (_, i) => SizedBox(
               width: cardWidth,

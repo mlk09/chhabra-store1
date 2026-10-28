@@ -6,6 +6,8 @@ import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/money.dart';
 import '../../core/theme.dart';
+import '../../core/order_state.dart';
+import '../../core/widgets/cart_widgets.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/product_widgets.dart';
 import '../../data/models/product.dart';
@@ -101,6 +103,21 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
             style: t.textTheme.bodyMedium,
           ),
         ],
+        for (final o in catalog.liveOffersFor(product, DateTime.now())) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.local_offer_rounded, color: Brand.green, size: 20),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  context.pick(o.title, o.titleHi),
+                  style: const TextStyle(color: Brand.green, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ],
         if (product.description != null) ...[
           const SizedBox(height: 18),
           Text(product.description!, style: t.textTheme.bodyLarge),
@@ -109,7 +126,28 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(category == null ? '' : context.pick(category.name, category.nameHi))),
+      appBar: AppBar(
+        title: Text(category == null ? '' : context.pick(category.name, category.nameHi)),
+        actions: [
+          IconButton(
+            tooltip: context.tr('Cart', 'कार्ट'),
+            onPressed: () => context.push('/cart'),
+            icon: Badge(
+              isLabelVisible: ref.watch(cartCountProvider) > 0,
+              label: Text('${ref.watch(cartCountProvider)}'),
+              child: const Icon(Icons.shopping_basket_outlined),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: selected == null
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: AddToCartButton(product: product, variant: selected, large: true),
+              ),
+            ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
