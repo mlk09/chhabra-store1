@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Replaced by `flutter build web --base-href /<repo>/app/` -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Order groceries from Chhabra General Store, Railway Road, Karnal.">
+  <meta name="theme-color" content="#0C110F">
+
+  <!-- iOS: "Add to Home Screen" works like an app -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chhabra Store">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Chhabra General Store</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; height: 100%; background: #0C110F; }
+    #loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #E7EFEA;
+    }
+    #loading img { width: 84px; height: 84px; border-radius: 22px; }
+    #loading .bar { width: 140px; height: 4px; border-radius: 4px; background: #24302B; overflow: hidden; }
+    #loading .bar::after {
+      content: ""; display: block; width: 40%; height: 100%; background: #FF9933; border-radius: 4px;
+      animation: slide 1.1s ease-in-out infinite;
+    }
+    #loading .hint { font-size: 14px; color: #9DB0A6; max-width: 280px; text-align: center; display: none; }
+    @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+  </style>
+</head>
+<body>
+  <!-- Visible until Flutter draws its first frame, so the page is never blank. -->
+  <div id="loading">
+    <img src="icons/Icon-192.png" alt="">
+    <div>Chhabra General Store</div>
+    <div class="bar"></div>
+    <div class="hint" id="slow">Taking long? Check your internet and refresh the page.</div>
+  </div>
+  <script>
+    setTimeout(function () { var s = document.getElementById('slow'); if (s) s.style.display = 'block'; }, 12000);
+    window.addEventListener('flutter-first-frame', function () {
+      var l = document.getElementById('loading'); if (l) l.remove();
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

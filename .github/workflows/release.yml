@@ -1,0 +1,94 @@
+# One click → a real release:
+#   split APKs (~20 MB each) + universal APK + AAB for Google Play,
+#   all signed with YOUR permanent key, published as a GitHub Release,
+#   then the download page is refreshed to point at it.
+# Actions → release → Run workflow → version like 1.0.0
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (e.g. 1.0.0). Must be higher than the last one."
+        required: true
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'upload' }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check version and signing key
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Version must look like 1.0.0"; exit 1; }
+          if [ -z "$KS" ] || [ -z "$PW" ]; then
+            echo "::error title=No signing key::Releases must use the permanent key, otherwise updates won't install over the old app. Run the 'create-signing-key' workflow first (README → Signing key)."
+            exit 1
+          fi
+          # versionCode = run number → always increases, so updates install.
+          sed -i -E "s/^version: .*/version: $VERSION+$((1000 + ${{ github.run_number }}))/" pubspec.yaml
+          grep '^version:' pubspec.yaml
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: "17" }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - name: Write .env from secrets
+        env: { RAW_URL: "${{ secrets.SUPABASE_URL }}", RAW_KEY: "${{ secrets.SUPABASE_ANON_KEY }}" }
+        run: .github/scripts/write_env.sh
+      - name: Install the permanent signing key
+        run: |
+          echo "$KS" | base64 -d > android/app/upload-keystore.jks
+          printf 'storeFile=upload-keystore.jks\nkeyAlias=%s\nkeyPassword=%s\nstorePassword=%s\n' "$ALIAS" "$PW" "$PW" > android/key.properties
+      - run: flutter pub get
+      - run: flutter test
+      - run: flutter build apk --release --split-per-abi --dart-define-from-file=.env
+      - run: |
+          mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk chhabra-store.apk
+          mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk chhabra-store-old-phones.apk
+      - run: flutter build apk --release --dart-define-from-file=.env
+      - run: mv build/app/outputs/flutter-apk/app-release.apk chhabra-store-universal.apk
+      - run: flutter build appbundle --release --dart-define-from-file=.env
+      - run: mv build/app/outputs/bundle/release/app-release.aab chhabra-store-play-store.aab
+      - name: Verify every file is signed with the permanent key
+        run: |
+          norm() { tr -d ':' | tr 'A-F' 'a-f'; }
+          EXPECTED=$(keytool -list -v -keystore android/app/upload-keystore.jks -storepass "$PW" -alias "$ALIAS" | grep 'SHA256:' | head -1 | awk '{print $2}' | norm)
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          for f in chhabra-store.apk chhabra-store-old-phones.apk chhabra-store-universal.apk; do
+            GOT=$("$APKSIGNER" verify --print-certs "$f" | grep -m1 'SHA-256 digest' | awk '{print $NF}' | norm)
+            [ "$GOT" = "$EXPECTED" ] || { echo "::error::$f is not signed with the permanent key"; exit 1; }
+          done
+          GOT=$(keytool -printcert -jarfile chhabra-store-play-store.aab | grep 'SHA256:' | head -1 | awk '{print $2}' | norm)
+          [ "$GOT" = "$EXPECTED" ] || { echo "::error::AAB is not signed with the permanent key"; exit 1; }
+          echo "::notice title=Signed with permanent key::SHA-256 $EXPECTED"
+          ls -lh *.apk *.aab
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Chhabra Store ${{ inputs.version }}
+          files: |
+            chhabra-store.apk
+            chhabra-store-old-phones.apk
+            chhabra-store-universal.apk
+            chhabra-store-play-store.aab
+          body: |
+            🛒 **Chhabra General Store ${{ inputs.version }}**
+
+            **Android:** download `chhabra-store.apk` (most phones). Open it from the notification or Files → Downloads → allow "Install unknown apps" → Install.
+            "App not installed" on a very old phone? Use `chhabra-store-old-phones.apk`.
+            **iPhone / computer:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/app/
+
+            `chhabra-store-play-store.aab` is for Google Play Console only (it does not install on phones directly).
+      - name: Refresh the download page
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh workflow run build.yml --repo "${{ github.repository }}" --ref main

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chhabra General Store — Download the app</title>
+  <meta name="description" content="Order groceries from Chhabra General Store, Railway Road, Karnal. Android app and web app.">
+  <meta name="theme-color" content="#0C110F">
+  <link rel="icon" href="icon.png">
+  <style>
+    :root { --bg:#0C110F; --panel:#141B18; --line:#2A3631; --text:#E7EFEA; --muted:#9DB0A6; --green:#3DDC84; --saffron:#FF9933; }
+    @media (prefers-color-scheme: light) {
+      :root { --bg:#F7F8F5; --panel:#FFFFFF; --line:#D5DCD6; --text:#14201A; --muted:#55665D; --green:#0E7A3E; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:17px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif; }
+    main { max-width:560px; margin:0 auto; padding:28px 16px 48px; }
+    header { text-align:center; }
+    header img { width:96px; height:96px; border-radius:24px; }
+    h1 { font-size:26px; margin:14px 0 2px; }
+    .sub { color:var(--muted); margin:0; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:18px; margin-top:18px; }
+    .btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; min-height:56px; border-radius:14px;
+           font-weight:700; font-size:18px; text-decoration:none; border:0; cursor:pointer; margin-top:10px; }
+    .primary { background:var(--green); color:#00210E; }
+    .secondary { background:transparent; color:var(--text); border:1px solid var(--line); }
+    .btn[aria-disabled="true"] { opacity:.5; pointer-events:none; }
+    .small { font-size:14px; color:var(--muted); }
+    .warn { background:rgba(255,153,51,.12); border:1px solid rgba(255,153,51,.5); border-radius:14px; padding:14px; display:none; }
+    ol { padding-left:22px; margin:8px 0 0; } li { margin:6px 0; }
+    .qr { text-align:center; } .qr img { width:200px; height:200px; background:#fff; padding:8px; border-radius:12px; }
+    a { color:var(--green); }
+    footer { text-align:center; margin-top:28px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.png" alt="Chhabra General Store logo">
+    <h1>Chhabra General Store</h1>
+    <p class="sub">छाबड़ा जनरल स्टोर · Railway Road, Karnal</p>
+  </header>
+
+  <!-- Shown only inside WhatsApp / Instagram / Facebook browsers, which block APK downloads. -->
+  <div class="warn" id="inapp">
+    <b>⚠️ Chrome में खोलें / Open in Chrome</b><br>
+    WhatsApp/Instagram के अंदर download रुक जाता है। ऊपर <b>⋮</b> दबाएँ → <b>Open in Chrome</b>.
+    <a class="btn primary" id="openChrome" href="#">Open in Chrome</a>
+    <button class="btn secondary" id="copy" type="button">Copy link</button>
+  </div>
+
+  <section class="card">
+    <h2 style="margin:0">📱 Android</h2>
+    <a class="btn primary" id="apk" aria-disabled="true" href="#">Download app</a>
+    <p class="small" id="apkInfo">App जल्द आ रहा है — तब तक नीचे Web App इस्तेमाल करें। / Coming soon — use the web app below meanwhile.</p>
+    <a class="btn secondary" id="play" href="#" style="display:none">Get it on Google Play</a>
+    <p class="small" id="old" style="display:none">बहुत पुराना फ़ोन और "App not installed"? <a id="apkOld" href="#">यह वाला download करें</a>.</p>
+  </section>
+
+  <section class="card">
+    <h2 style="margin:0">🍎 iPhone / 💻 Computer</h2>
+    <a class="btn secondary" id="web" href="app/">Open Web App</a>
+    <p class="small">iPhone: Safari में खोलें → Share ⬆️ → <b>Add to Home Screen</b>. Computer: Chrome में खोलें → address bar में ⊕ Install.</p>
+  </section>
+
+  <section class="card">
+    <h2 style="margin:0">Install कैसे करें / How to install</h2>
+    <ol>
+      <li><b>Chrome</b> में यह page खोलें (WhatsApp के अंदर नहीं)।</li>
+      <li><b>Download app</b> दबाएँ। "File might be harmful" आए तो <b>Download anyway</b>.</li>
+      <li>Download पूरा होने पर notification से या <b>Files → Downloads</b> से file खोलें।</li>
+      <li>"Install unknown apps" पूछे → <b>Settings</b> → Chrome के लिए <b>Allow</b> → वापस आएँ।</li>
+      <li><b>Install</b> दबाएँ। "Play Protect" warning आए तो <b>More details → Install anyway</b>.</li>
+    </ol>
+    <p class="small">Update: नया version इसी तरह install करें — पुराना app हटाने की ज़रूरत नहीं, आपका data बना रहेगा।</p>
+  </section>
+
+  <section class="card qr">
+    <p style="margin-top:0"><b>Share with friends</b> — scan to open this page</p>
+    <img src="qr.png" alt="QR code for this download page" onerror="this.parentElement.style.display='none'">
+  </section>
+
+  <footer class="small">
+    <span id="ver"></span>
+  </footer>
+</main>
+<script src="config.js"></script>
+<script>
+  (function () {
+    var c = window.SHOP_DOWNLOAD || {};
+    var $ = function (id) { return document.getElementById(id); };
+    if (c.apk) {
+      $('apk').href = c.apk; $('apk').removeAttribute('aria-disabled');
+      $('apkInfo').textContent = 'Android 7 या नया · ~20 MB';
+    }
+    if (c.apkOld) { $('apkOld').href = c.apkOld; $('old').style.display = 'block'; }
+    if (c.playStore) { $('play').href = c.playStore; $('play').style.display = 'flex'; }
+    if (c.webApp) $('web').href = c.webApp;
+    if (c.version) $('ver').textContent = 'Version ' + c.version;
+
+    var ua = navigator.userAgent || '';
+    var inApp = /FBAN|FBAV|Instagram|WhatsApp|Line\/|Snapchat|; wv\)/i.test(ua);
+    if (inApp) {
+      $('inapp').style.display = 'block';
+      var url = location.href.replace(/^https?:\/\//, '');
+      $('openChrome').href = /Android/i.test(ua)
+        ? 'intent://' + url + '#Intent;scheme=https;package=com.android.chrome;end'
+        : location.href;
+    }
+    $('copy').onclick = function () {
+      (navigator.clipboard ? navigator.clipboard.writeText(location.href) : Promise.reject())
+        .then(function () { $('copy').textContent = 'Copied ✓ — paste in Chrome'; })
+        .catch(function () { prompt('Copy this link and open it in Chrome:', location.href); });
+    };
+  })();
+</script>
+</body>
+</html>

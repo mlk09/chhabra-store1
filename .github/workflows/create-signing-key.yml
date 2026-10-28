@@ -1,0 +1,76 @@
+# RUN ONCE. Creates your permanent Android signing key, stores it in GitHub
+# Secrets, and gives you an encrypted backup ZIP to keep safe.
+# Every future update must be signed with this same key — otherwise phones
+# refuse to update and people must uninstall (losing app data).
+#
+# Before running, add two repository secrets (README → "Signing key"):
+#   ANDROID_KEY_PASSWORD  a long password you invent and write down (min 12 chars)
+#   GH_ADMIN_TOKEN        fine-grained token: only this repo, "Secrets: Read and write"
+# After it succeeds: download the backup ZIP, then DELETE GH_ADMIN_TOKEN.
+name: create-signing-key
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "CREATE MY KEY" to confirm'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    env:
+      PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      GH_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Safety checks
+        run: |
+          [ "${{ inputs.confirm }}" = "CREATE MY KEY" ] || { echo "::error::Type CREATE MY KEY exactly."; exit 1; }
+          [ ${#PW} -ge 12 ] || { echo "::error title=Password missing::Add secret ANDROID_KEY_PASSWORD (at least 12 characters) first."; exit 1; }
+          [[ "$PW" != *"'"* && "$PW" != *'"'* && "$PW" != *' '* ]] || { echo "::error::Please use a password without spaces or quotes."; exit 1; }
+          [ -n "$GH_TOKEN" ] || { echo "::error title=Token missing::Add secret GH_ADMIN_TOKEN (README → Signing key)."; exit 1; }
+          NAMES=$(gh secret list --repo "$REPO" --json name --jq '.[].name') || {
+            echo "::error title=Token cannot read secrets::GH_ADMIN_TOKEN needs access to this repository with 'Secrets: Read and write'."; exit 1; }
+          if echo "$NAMES" | grep -qx ANDROID_KEYSTORE_BASE64; then
+            echo "::error title=Key already exists::ANDROID_KEYSTORE_BASE64 is already set. Refusing to replace your permanent key. (If you truly lost it, see README → 'Lost signing key'.)"
+            exit 1
+          fi
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: "17" }
+      - name: Create the key (RSA 4096, valid ~27 years)
+        run: |
+          keytool -genkeypair -v -keystore upload-keystore.jks -storetype PKCS12 \
+            -alias upload -keyalg RSA -keysize 4096 -validity 10000 \
+            -storepass "$PW" -keypass "$PW" \
+            -dname "CN=Chhabra General Store, O=Chhabra General Store, L=Karnal, ST=Haryana, C=IN" >/dev/null 2>&1
+          keytool -list -v -keystore upload-keystore.jks -storepass "$PW" -alias upload | grep -E 'SHA1:|SHA256:' > fingerprints.txt
+          echo "::notice title=Key created::$(grep SHA256 fingerprints.txt | xargs)"
+      - name: Save it in GitHub Secrets
+        run: |
+          base64 -w0 upload-keystore.jks | gh secret set ANDROID_KEYSTORE_BASE64 --repo "$REPO"
+          gh secret set ANDROID_KEY_ALIAS --repo "$REPO" --body upload
+          echo "::notice title=Saved::ANDROID_KEYSTORE_BASE64 and ANDROID_KEY_ALIAS are now repository secrets."
+      - name: Encrypted backup for you
+        run: |
+          cat > HOW-TO-RESTORE.txt <<'TXT'
+          Chhabra Store — Android signing key backup
+          ===========================================
+          upload-keystore.jks  = the key. Alias: upload. Password: the ANDROID_KEY_PASSWORD you chose.
+          fingerprints.txt     = its fingerprints (not secret).
+
+          Keep 2 copies: Google Drive + a pen drive. Never email it, never upload it to GitHub.
+          To restore into a new repo, see README → "Restore signing key".
+          TXT
+          7z a -tzip -mem=AES256 -p"$PW" signing-key-backup.zip upload-keystore.jks fingerprints.txt HOW-TO-RESTORE.txt >/dev/null
+          rm upload-keystore.jks
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signing-key-backup-DOWNLOAD-AND-DELETE
+          path: signing-key-backup.zip
+          retention-days: 1
+      - run: |
+          echo "::notice title=Next steps::1) Download the artifact 'signing-key-backup-DOWNLOAD-AND-DELETE' below. 2) Delete it from this run page. 3) Delete secret GH_ADMIN_TOKEN and revoke the token on GitHub. ZIP password = your ANDROID_KEY_PASSWORD."
