@@ -16,6 +16,9 @@ import '../../data/backend.dart';
 import '../../data/models/catalog.dart';
 import '../../data/models/member.dart';
 import '../../data/models/product.dart';
+import '../../data/models/product_guess.dart';
+import '../../domain/search.dart';
+import 'ai_fill.dart';
 import 'photo.dart';
 
 const _gstRates = [0.0, 5.0, 18.0, 40.0, 12.0, 28.0, 3.0, 0.25];
@@ -97,7 +100,8 @@ class _ProductEditorScreenState extends ConsumerState<ProductEditorScreen> {
     if (!_dirty) setState(() => _dirty = true);
   }
 
-  Future<void> _choosePhoto() async {
+  /// Picks a photo; with [withAi] the AI also fills in name, category, size, MRP.
+  Future<void> _choosePhoto({bool withAi = false}) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       showDragHandle: true,
@@ -122,15 +126,59 @@ class _ProductEditorScreenState extends ConsumerState<ProductEditorScreen> {
     if (source == null) return;
     try {
       final photo = await pickProductPhoto(source);
-      if (photo != null && mounted) {
-        setState(() {
-          _newPhoto = photo;
-          _dirty = true;
-        });
-      }
+      if (photo == null || !mounted) return;
+      setState(() {
+        _newPhoto = photo;
+        _dirty = true;
+      });
+      if (!withAi) return;
+      final guess = await readPhotoWithAi(context, ref, photo);
+      if (guess != null && mounted) _applyGuess(guess);
     } catch (e) {
       if (mounted) showSnack(context, errorText(context, e), error: true);
     }
+  }
+
+  /// Fills empty fields from the AI's reading (a new product gets everything).
+  void _applyGuess(ProductGuess g) {
+    final catalog = ref.read(catalogProvider).value!;
+    final canPrice = ref.read(sessionProvider).value?.can(Perm.prices) ?? false;
+    final isNew = _original == null;
+    bool empty(TextEditingController c) => c.text.trim().isEmpty;
+    setState(() {
+      if (isNew || empty(_name)) _name.text = g.name;
+      if (g.nameHi != null && (isNew || empty(_nameHi))) _nameHi.text = g.nameHi!;
+      if (g.brand != null && (isNew || empty(_brand))) _brand.text = g.brand!;
+      if (catalog.category(g.categoryId) != null && (isNew || _categoryId == null)) _categoryId = g.categoryId;
+      final words = {..._synonyms.text.split(',').map((w) => w.trim()).where((w) => w.isNotEmpty), ...g.synonyms};
+      _synonyms.text = words.join(', ');
+      final size = _sizes.first;
+      if (isNew) {
+        _loose = g.isLoose;
+        size.unit = g.unit;
+        size.unitQty = g.unitQty;
+        if (g.isLoose) size.makeLoose();
+      }
+      if (empty(size.label) || isNew) size.label.text = g.label;
+      if (canPrice && g.mrp != null && empty(size.mrp)) {
+        size.mrp.text = rupeesText(g.mrp!);
+        if (empty(size.price)) size.price.text = rupeesText(g.mrp!);
+      }
+      _dirty = true;
+    });
+    final existing = isNew ? findBestMatch(g.name, catalog.products, catalog: catalog) : null;
+    showSnack(
+      context,
+      existing != null
+          ? context.tr(
+              'Looks like "${existing.name}" is already in your list.',
+              '"${existing.name}" पहले से आपकी लिस्ट में लगता है।',
+            )
+          : context.tr(
+              'Filled from photo — please check name, size and price.',
+              'फ़ोटो से भरा — नाम, साइज़ और रेट जाँच लें।',
+            ),
+    );
   }
 
   Future<void> _save() async {
@@ -286,6 +334,14 @@ class _ProductEditorScreenState extends ConsumerState<ProductEditorScreen> {
                     newPhoto: _newPhoto,
                     onTap: _choosePhoto,
                   ),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => _choosePhoto(withAi: true),
+                      icon: const Icon(Icons.auto_awesome),
+                      label: Text(context.tr('Fill from photo (AI)', 'फ़ोटो से भरें (AI)')),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _name,
@@ -315,6 +371,7 @@ class _ProductEditorScreenState extends ConsumerState<ProductEditorScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String?>(
+                          key: ValueKey('cat-$_categoryId'), // re-reads the value after "Fill from photo"
                           initialValue: _categoryId,
                           isExpanded: true,
                           decoration: InputDecoration(labelText: context.tr('Category', 'कैटेगरी')),
@@ -716,6 +773,7 @@ class _SizeCardState extends State<_SizeCard> {
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<SaleUnit>(
+                    key: ValueKey('unit-${f.id}-${f.unit.code}'),
                     initialValue: f.unit,
                     isExpanded: true,
                     decoration: InputDecoration(labelText: context.tr('Unit', 'इकाई')),

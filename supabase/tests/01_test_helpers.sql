@@ -51,4 +51,5 @@ begin
   return n;
 end $$;
 
-grant execute on all functions in schema tests to anon, authenticated;
+grant usage on schema tests to service_role;
+grant execute on all functions in schema tests to anon, authenticated, service_role;

@@ -7,6 +7,7 @@ import '../models/catalog.dart';
 import '../models/category.dart';
 import '../models/member.dart';
 import '../models/product.dart';
+import '../models/product_guess.dart';
 import '../models/shop.dart';
 import 'demo_catalog.dart';
 
@@ -118,6 +119,18 @@ class DemoBackend implements Backend {
     _catalog = _catalog.copyWith(shop: shop);
     return shop;
   }
+
+  @override
+  Future<ProductGuess> identifyProduct({
+    required String shopId,
+    required Uint8List jpeg,
+    required List<Category> categories,
+  }) async => throw const AppException(
+    'Photo recognition (AI) works in your real shop after setup — it needs the shop server. '
+        'In the demo you can still add the photo and type the details.',
+    'फ़ोटो से पहचान (AI) सेटअप के बाद असली दुकान में चलेगी — इसके लिए दुकान का सर्वर चाहिए। '
+        'डेमो में फ़ोटो लगाकर जानकारी ख़ुद भर सकते हैं।',
+  );
 
   @override
   String? imageUrl(String? path) => null;

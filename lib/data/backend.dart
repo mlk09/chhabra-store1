@@ -4,6 +4,7 @@ import 'models/catalog.dart';
 import 'models/category.dart';
 import 'models/member.dart';
 import 'models/product.dart';
+import 'models/product_guess.dart';
 import 'models/shop.dart';
 
 /// A compressed product photo ready for upload (big + thumbnail JPEGs).
@@ -65,6 +66,14 @@ abstract class Backend {
     String rounding = 'rupee',
   });
   Future<Shop> updateShop(Shop shop);
+
+  /// Reads a product photo with AI (name, Hindi name, brand, size, MRP,
+  /// category). [jpeg] should be the compressed photo, not the raw camera file.
+  Future<ProductGuess> identifyProduct({
+    required String shopId,
+    required Uint8List jpeg,
+    required List<Category> categories,
+  });
 
   /// Public URL of a stored product image (live shop).
   String? imageUrl(String? path);

@@ -72,6 +72,11 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         title: Text(context.tr('Products & prices', 'सामान और रेट')),
         actions: [
           IconButton(
+            tooltip: context.tr('Bulk photos', 'एक साथ फ़ोटो'),
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            onPressed: () => context.push('/owner/bulk-photos'),
+          ),
+          IconButton(
             tooltip: context.tr('Bulk price update', 'एक साथ रेट बदलें'),
             icon: const Icon(Icons.percent_rounded),
             onPressed: () => context.push('/owner/bulk-price'),

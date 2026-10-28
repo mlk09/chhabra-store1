@@ -30,6 +30,11 @@ class MoreScreen extends ConsumerWidget {
           ),
           const Divider(),
           _Tile(Icons.category_outlined, context.tr('Categories', 'कैटेगरी'), () => context.push('/owner/categories')),
+          _Tile(
+            Icons.add_photo_alternate_outlined,
+            context.tr('Bulk photos (AI)', 'एक साथ फ़ोटो (AI)'),
+            () => context.push('/owner/bulk-photos'),
+          ),
           if (s.can(Perm.prices))
             _Tile(
               Icons.percent_rounded,

@@ -146,6 +146,11 @@ class _Body extends StatelessWidget {
                 route: '/owner/product/new',
               ),
               _Action(
+                icon: Icons.add_photo_alternate_rounded,
+                label: context.tr('Bulk photos', 'एक साथ फ़ोटो'),
+                route: '/owner/bulk-photos',
+              ),
+              _Action(
                 icon: Icons.percent_rounded,
                 label: context.tr('Bulk price', 'एक साथ रेट'),
                 route: '/owner/bulk-price',

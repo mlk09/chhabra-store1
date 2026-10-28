@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,6 +12,7 @@ import '../models/catalog.dart';
 import '../models/category.dart';
 import '../models/member.dart';
 import '../models/product.dart';
+import '../models/product_guess.dart';
 import '../models/shop.dart';
 
 /// The real shop, backed by Supabase. Every write is checked again by RLS and
@@ -252,6 +254,67 @@ class SupabaseBackend implements Backend {
     final row = await _db.from('shops').update(shop.toEditableJson()).eq('id', shop.id).select().single();
     return Shop.fromJson(row);
   });
+
+  @override
+  Future<ProductGuess> identifyProduct({
+    required String shopId,
+    required Uint8List jpeg,
+    required List<Category> categories,
+  }) async {
+    try {
+      final res = await _db.functions
+          .invoke(
+            'product-ai',
+            body: {
+              'shop_id': shopId,
+              'image_base64': base64Encode(jpeg),
+              'categories': [
+                for (final c in categories) {'id': c.id, 'name': c.name},
+              ],
+            },
+          )
+          .timeout(const Duration(seconds: 45));
+      final guess = ProductGuess.fromJson(((res.data as Map)['guess'] as Map).cast<String, dynamic>());
+      if (!guess.isProduct) {
+        throw const AppException(
+          'Could not recognise a product. Try a clear, close photo of the front of the pack.',
+          'सामान पहचान नहीं हुआ। पैकेट के सामने की साफ़, पास से फ़ोटो लें।',
+        );
+      }
+      return guess;
+    } on FunctionException catch (e) {
+      final code = e.details is Map ? (e.details as Map)['error'] : null;
+      throw switch (code) {
+        'ai_not_configured' => const AppException(
+          'AI is not set up yet: add the GEMINI_API_KEY secret and run "setup-backend" (README → AI).',
+          'AI अभी सेट नहीं है: GEMINI_API_KEY secret डालकर "setup-backend" चलाएँ (README → AI)।',
+        ),
+        'daily_limit' => const AppException(
+          'Today\'s photo-recognition limit is used up. Try again tomorrow.',
+          'आज की फ़ोटो-पहचान सीमा पूरी हो गई। कल फिर कोशिश करें।',
+        ),
+        'ai_busy' => const AppException(
+          'AI is busy. Please try again in a minute.',
+          'AI व्यस्त है। एक मिनट बाद कोशिश करें।',
+        ),
+        'forbidden' => const AppException(
+          'You do not have permission to add products.',
+          'आपको सामान जोड़ने की अनुमति नहीं है।',
+        ),
+        'login_required' => const AppException('Please log in again.', 'कृपया दोबारा लॉग इन करें।'),
+        _ => const AppException(
+          'Photo recognition failed. Please try again.',
+          'फ़ोटो पहचान नहीं हो पाई। फिर कोशिश करें।',
+        ),
+      };
+    } on TimeoutException {
+      throw const AppException('The internet is slow. Please try again.', 'इंटरनेट धीमा है। फिर से कोशिश करें।');
+    } on AppException {
+      rethrow;
+    } catch (_) {
+      throw const AppException('No internet connection.', 'इंटरनेट कनेक्शन नहीं है।');
+    }
+  }
 
   @override
   String? imageUrl(String? path) => path == null ? null : AppConfig.imageUrl(path);

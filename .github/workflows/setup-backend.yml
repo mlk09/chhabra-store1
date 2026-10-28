@@ -7,6 +7,7 @@
 #
 # Needs repository secrets (README → "Secrets"):
 #   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_ACCESS_TOKEN
+# Optional: GEMINI_API_KEY (free, aistudio.google.com/apikey) → photo recognition.
 name: setup-backend
 
 on:
@@ -72,6 +73,17 @@ jobs:
       - uses: supabase/setup-cli@v1
         if: hashFiles('supabase/functions/*/index.ts') != ''
         with: { version: latest }
+      - name: Store server-side secrets (never in the app)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::warning title=Photo recognition off::Add repository secret GEMINI_API_KEY (free key from https://aistudio.google.com/apikey) and run setup-backend again."
+            exit 0
+          fi
+          supabase secrets set --project-ref "$PROJECT_REF" GEMINI_API_KEY="$GEMINI_API_KEY" AI_DAILY_LIMIT=300 >/dev/null
+          echo "::notice title=Photo recognition on::GEMINI_API_KEY saved in Supabase Secrets."
+
       - name: Deploy Edge Functions
         if: hashFiles('supabase/functions/*/index.ts') != ''
         run: |

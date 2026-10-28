@@ -3,6 +3,7 @@ import 'package:chhabra_store/data/demo/demo_backend.dart';
 import 'package:chhabra_store/data/demo/demo_catalog.dart';
 import 'package:chhabra_store/data/models/catalog.dart';
 import 'package:chhabra_store/data/models/product.dart';
+import 'package:chhabra_store/data/models/product_guess.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -72,5 +73,24 @@ void main() {
     final p = (await demo.loadCatalog(staffView: true)).products.first;
     final bad = p.copyWith(variants: [p.variants.first.copyWith(price: p.variants.first.mrp + 100)]);
     expect(() => demo.saveProduct(bad), throwsA(anything));
+  });
+
+  test('AI guess is read safely', () {
+    final g = ProductGuess.fromJson({
+      'is_product': true,
+      'name': 'Tata Salt',
+      'name_hi': 'टाटा नमक',
+      'size_label': '1 kg',
+      'unit': 'kg',
+      'unit_qty': 1,
+      'mrp': 30,
+      'category_id': 'c-sugar',
+      'synonyms': ['namak', 5],
+    });
+    expect(g.mrp, 3000);
+    expect(g.unit, SaleUnit.kg);
+    expect(g.synonyms, ['namak']);
+    expect(g.label, '1 kg');
+    expect(const ProductGuess(isProduct: true, name: 'Potato', isLoose: true, unit: SaleUnit.kg).label, 'per kg');
   });
 }

@@ -11,6 +11,7 @@ import '../features/customer/category_screen.dart';
 import '../features/customer/customer_home.dart';
 import '../features/customer/product_screen.dart';
 import '../features/customer/search_screen.dart';
+import '../features/owner/bulk_photos_screen.dart';
 import '../features/owner/bulk_price_screen.dart';
 import '../features/owner/categories_screen.dart';
 import '../features/owner/dashboard_screen.dart';
@@ -104,6 +105,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/owner/categories', parentNavigatorKey: _rootKey, builder: (_, _) => const CategoriesScreen()),
       GoRoute(path: '/owner/bulk-price', parentNavigatorKey: _rootKey, builder: (_, _) => const BulkPriceScreen()),
+      GoRoute(path: '/owner/bulk-photos', parentNavigatorKey: _rootKey, builder: (_, _) => const BulkPhotosScreen()),
       GoRoute(path: '/owner/shop', parentNavigatorKey: _rootKey, builder: (_, _) => const ShopSettingsScreen()),
     ],
   );

@@ -40,6 +40,11 @@ jobs:
       - name: Database + RLS tests
         env: { PGHOST: localhost, PGPORT: "5432", PGUSER: postgres, PGPASSWORD: postgres }
         run: tools/test_db.sh
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Edge Function tests
+        working-directory: supabase/functions
+        run: deno test --no-check=remote
 
   android:
     needs: test

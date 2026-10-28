@@ -11,6 +11,7 @@ Built with Flutter + Supabase. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 
 | Phase | What | Status |
 |---|---|---|
 | 1 | Login, roles, products & prices, categories, photos, demo mode | ✅ done |
+| 1+ | AI photo recognition (Gemini), bulk photos | ✅ done |
 | 2 | Customer cart, server-side discounts/coupons, orders + live alerts | next |
 | 3 | Payments: UPI intent, Razorpay (webhook), Cash on Delivery | |
 | 4 | Counter billing (offline), barcode, WhatsApp bill, udhaar/khata | |
@@ -90,6 +91,35 @@ It checks that every file is signed with your permanent key, publishes a GitHub 
 
 **Download page:** `https://<your-github-name>.github.io/<repo>/`. It has an Android button, a web-app button and a QR code. Share this link, not the APK file.
 
+### Step 8 (optional, recommended): Photo recognition with AI
+Lets you add products by just taking a photo: AI reads the name, Hindi name, size, MRP and picks the category.
+1. Open <https://aistudio.google.com/apikey> (login with Google) → **Create API key** → copy it. It is **free** for normal shop use. Your Family Food key works too.
+2. Add secret `GEMINI_API_KEY` = that key.
+3. **Actions** → **setup-backend** → Run workflow. The key goes into **Supabase Secrets**, never into the app.
+
+Limit: 300 photos per person per day (protects your free quota).
+
+---
+
+## Adding products & photos
+
+**How saving works**
+- **Demo mode:** nothing is saved (the orange strip says so). Good for practice.
+- **Your real shop** (after Steps 2–5): every **Save** goes straight to your Supabase database, so the shop on every phone and the web app updates. Photos are compressed on the phone (~100 KB) before upload.
+
+**One product:** Products → **+ Add** → **Fill from photo (AI)** → take a photo of the front of the pack → check name, size, price → **Save product**.
+
+**Many photos at once:** Products → 🖼 icon (or Dashboard → **Bulk photos**) → **Choose photos** (up to 30). For each photo the app:
+1. matches by **file name**, e.g. `Tata Salt.jpg` → Tata Salt (best when photos are on a computer),
+2. else asks the **AI**, which finds the existing product or fills in a new one,
+3. else lets you pick the product or type it.
+
+Check the cards (red = something missing) → **Save**.
+
+**Photo tips:** front of the pack, close-up, good light, plain background (a white sheet). Square photos look best.
+
+**Why the app doesn't ship ready-made product photos:** brand pack photos on the internet belong to the brands/websites, so copying them into your app is a copyright risk. Your own photos (or ones a supplier/brand gave you permission for) are safe, and with Bulk photos 30 products take ~5 minutes.
+
 ---
 
 ## All secrets: what, where, who reads them
@@ -103,6 +133,7 @@ It checks that every file is signed with your permanent key, publishes a GitHub 
 | `ANDROID_KEYSTORE_BASE64` | GitHub Secrets (created by workflow) | build, release | 🔒 yes |
 | `ANDROID_KEY_ALIAS` | GitHub Secrets (created by workflow) | build, release | no (`upload`) |
 | `GH_ADMIN_TOKEN` | GitHub Secrets, **temporary** | create-signing-key only | 🔒 delete after use |
+| `GEMINI_API_KEY` | GitHub Secrets → copied to **Supabase** Secrets by setup-backend | Edge Function `product-ai` | 🔒 never in the app |
 | `RAZORPAY_KEY_ID` | GitHub Secrets (Phase 3) | app build | public key id |
 | `RAZORPAY_KEY_SECRET` | **Supabase** Secrets (Phase 3) | Edge Functions | 🔒 never in the app |
 | `RAZORPAY_WEBHOOK_SECRET` | **Supabase** Secrets (Phase 3) | Edge Functions | 🔒 never in the app |

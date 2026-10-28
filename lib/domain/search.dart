@@ -137,3 +137,20 @@ List<Product> searchProducts(String query, Iterable<Product> products, {Catalog?
   scored.sort((a, b) => b.$2 != a.$2 ? b.$2.compareTo(a.$2) : a.$1.name.compareTo(b.$1.name));
   return scored.map((e) => e.$1).toList();
 }
+
+final _sizeToken = RegExp(r'^\d+(\.\d+)?(kg|g|gm|gms|ml|l|ltr|litre|pc|pcs|x)?$');
+final _noise = {'img', 'image', 'photo', 'pic', 'whatsapp', 'jpeg', 'jpg', 'png', 'webp', 'final', 'copy', 'new'};
+
+/// Best existing product for a photo's file name ("Tata-Salt_1kg.jpg") or an
+/// AI-read name ("Tata Salt"). Sizes and camera noise words are ignored. Null
+/// when nothing matches every remaining word.
+Product? findBestMatch(String text, Iterable<Product> products, {Catalog? catalog}) {
+  final stem = text.replaceAll(RegExp(r'\.(jpe?g|png|webp|heic)$', caseSensitive: false), '');
+  final words = normalizeSearch(stem.replaceAll(RegExp(r'[_\-]+'), ' '))
+      .split(' ')
+      .where((w) => w.length > 1 && !_sizeToken.hasMatch(w) && !_noise.contains(w) && !RegExp(r'^\d+$').hasMatch(w))
+      .toList();
+  if (words.isEmpty) return null;
+  final hits = searchProducts(words.join(' '), products, catalog: catalog);
+  return hits.isEmpty ? null : hits.first;
+}

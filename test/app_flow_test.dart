@@ -145,4 +145,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull, reason: 'product editor');
   });
+
+  testWidgets('bulk photos screen opens; AI is off in demo with an explanation', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpApp(tester, size: const Size(360, 740));
+    await tester.tap(find.text('Demo: Shopkeeper'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Products'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Bulk photos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add many photos at once'), findsOneWidget);
+    expect(find.text('Works in the real shop after setup'), findsOneWidget);
+    expect(find.textContaining('Choose photos'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('product editor offers "Fill from photo (AI)"', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Demo: Shopkeeper'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add product').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Fill from photo (AI)'), findsOneWidget);
+  });
 }
