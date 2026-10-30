@@ -39,7 +39,7 @@ class DemoStore {
       name: 'Demo Customer',
       phone: '9876543210',
       line1: '24, Model Town',
-      landmark: 'Near Railway Road',
+      landmark: 'Near Main Bazaar',
       pincode: '132001',
       isDefault: true,
     ),
@@ -211,6 +211,21 @@ class DemoBackend implements Backend {
 
   @override
   Future<void> deleteAccount() async => _auth.add(null);
+
+  @override
+  Future<List<ShopSummary>> listShops() async => [
+    ShopSummary(slug: 'demo', name: _catalog.shop.name, nameHi: _catalog.shop.nameHi, city: _catalog.shop.city),
+  ];
+
+  @override
+  Future<List<String>> myShopSlugs() async => asShopkeeper ? const ['demo'] : const [];
+
+  @override
+  Future<String> uploadShopLogo(ProductPhoto photo) async {
+    final path = 'demo/logo/${DateTime.now().microsecondsSinceEpoch}.jpg';
+    _s.photos[path] = photo.thumb;
+    return path;
+  }
 
   @override
   Future<Catalog> loadCatalog({required bool staffView, bool withCosts = false}) async => _catalog;

@@ -5,7 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../core/app_state.dart';
 import '../../core/i18n.dart';
 import '../../core/money.dart';
+
+import 'package:image_picker/image_picker.dart';
+
 import '../../core/widgets/common.dart';
+import '../../core/widgets/product_widgets.dart';
+import 'photo.dart';
 import '../../data/models/member.dart';
 import '../../data/models/shop.dart';
 import '../../domain/slots.dart';
@@ -24,6 +29,11 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
   bool _isOpen = true, _holiday = false, _saving = false;
   bool _delivery = true, _pickup = true, _cod = true;
   int _lead = 60;
+  String? _brandColor;
+  String? _logoPath;
+  bool _uploadingLogo = false;
+
+  static const _palette = ['#1FA45A', '#0E7490', '#1D4ED8', '#7C3AED', '#C2185B', '#DC2626', '#EA580C', '#A16207'];
   final _slots = <String>{};
 
   static const _slotChoices = [
@@ -63,6 +73,8 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
     _pickup = s.pickupEnabled;
     _cod = s.codEnabled;
     _lead = s.slotLeadMinutes;
+    _brandColor = s.brandColor;
+    _logoPath = s.logoPath;
     _slots.addAll(s.timeSlots);
   }
 
@@ -75,6 +87,42 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
   }
 
   String? _v(String key) => _ctl(key).text.trim().isEmpty ? null : _ctl(key).text.trim();
+
+  Future<void> _pickLogo() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: Text(ctx.tr('Take photo', 'फ़ोटो खींचें')),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(ctx.tr('Choose from gallery', 'गैलरी से चुनें')),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    setState(() => _uploadingLogo = true);
+    try {
+      final photo = await pickProductPhoto(source);
+      if (photo == null) return;
+      final path = await ref.read(backendProvider).uploadShopLogo(photo);
+      if (mounted) setState(() => _logoPath = path);
+    } catch (e) {
+      if (mounted) showSnack(context, errorText(context, e), error: true);
+    } finally {
+      if (mounted) setState(() => _uploadingLogo = false);
+    }
+  }
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
@@ -114,6 +162,8 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
       'cod_enabled': _cod,
       'slot_lead_minutes': _lead,
       'time_slots': (_slots.toList()..sort()),
+      'brand_color': _brandColor,
+      'logo_path': _logoPath,
     });
 
     setState(() => _saving = true);
@@ -221,6 +271,70 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
                         ),
                     ],
                   ),
+                ),
+                SectionTitle(context.tr('Look of your shop', 'दुकान का रूप')),
+                Row(
+                  children: [
+                    ShopLogo(name: _ctl('name').text, logoPath: _logoPath, brandColor: _brandColor, size: 72),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: _uploadingLogo ? null : _pickLogo,
+                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            label: Text(
+                              _logoPath == null
+                                  ? context.tr('Upload logo', 'लोगो लगाएँ')
+                                  : context.tr('Change logo', 'लोगो बदलें'),
+                            ),
+                          ),
+                          if (_logoPath != null)
+                            TextButton(
+                              onPressed: () => setState(() => _logoPath = null),
+                              child: Text(context.tr('Use letter instead', 'अक्षर वाला लोगो')),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(context.tr('Colour', 'रंग'), style: t.textTheme.titleSmall),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final hex in _palette)
+                      Semantics(
+                        button: true,
+                        selected: (_brandColor ?? _palette.first) == hex,
+                        label: hex,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () => setState(() => _brandColor = hex),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: parseHexColor(hex),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: (_brandColor ?? _palette.first) == hex
+                                    ? t.colorScheme.onSurface
+                                    : Colors.transparent,
+                                width: 3,
+                              ),
+                            ),
+                            child: (_brandColor ?? _palette.first) == hex
+                                ? const Icon(Icons.check, color: Colors.white)
+                                : null,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 SectionTitle(context.tr('Shop', 'दुकान')),
                 _field(

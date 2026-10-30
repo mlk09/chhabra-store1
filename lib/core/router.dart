@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent, Supabase;
 
 import '../features/auth/auth_screens.dart';
+import '../features/auth/shop_picker_screen.dart';
 import '../features/auth/welcome_screen.dart';
 import '../features/common/settings_screen.dart';
 import '../features/customer/account_screen.dart';
@@ -34,6 +35,7 @@ final _rootKey = GlobalKey<NavigatorState>();
 
 /// Where a person lands after startup / login.
 String homeFor(Session s, Prefs prefs) {
+  if (!s.hasShop) return '/pick-shop';
   if (s.isShopkeeper) return '/owner';
   if (!s.isLoggedIn && !prefs.seenWelcome) return '/welcome';
   return '/shop';
@@ -59,6 +61,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!session.hasValue) return loc == '/splash' ? null : '/splash';
       final s = session.requireValue;
       if (loc == '/splash' || loc == '/error') return homeFor(s, ref.read(prefsProvider));
+      // Platform app with no shop chosen yet: only shop-finder and login screens.
+      const noShopOk = {'/pick-shop', '/login', '/signup', '/forgot', '/reset-password', '/settings'};
+      if (!s.hasShop && !noShopOk.contains(loc)) return '/pick-shop';
+      if (loc == '/pick-shop' && s.hasShop && AppConfig.isLockedToShop) return homeFor(s, ref.read(prefsProvider));
       if (loc.startsWith('/owner') && !s.isShopkeeper) return '/shop';
       return null;
     },
@@ -66,6 +72,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/error', builder: (_, _) => const StartupErrorScreen()),
       GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
+      GoRoute(path: '/pick-shop', builder: (_, _) => const ShopPickerScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
       GoRoute(path: '/forgot', builder: (_, _) => const ForgotPasswordScreen()),

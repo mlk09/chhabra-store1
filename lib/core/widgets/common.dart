@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/backend.dart';
+import '../config.dart';
 import '../i18n.dart';
 
 /// A friendly message for any error (Hindi when the app is in Hindi).
@@ -93,30 +94,38 @@ class ErrorView extends StatelessWidget {
   );
 }
 
-/// Shop logo: saffron/green monogram, no image file needed.
+/// Parses "#RRGGBB" (shop brand colour); null if missing or invalid.
+Color? parseHexColor(String? hex) {
+  if (hex == null || !RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(hex)) return null;
+  return Color(int.parse('FF${hex.substring(1)}', radix: 16));
+}
+
+/// Monogram logo: first letter on the brand colour with a saffron bar.
+/// Used for the platform and for shops that haven't uploaded a logo.
 class AppLogo extends StatelessWidget {
-  const AppLogo({super.key, this.size = 72});
+  const AppLogo({super.key, this.size = 72, this.letter, this.color});
   final double size;
+  final String? letter;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final base = color ?? const Color(0xFF1FA45A);
+    final dark = Color.lerp(base, Colors.black, 0.3)!;
+    final initial = (letter ?? AppConfig.appName).trim();
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * 0.28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1FA45A), Color(0xFF0E7A3E)],
-        ),
-        boxShadow: [BoxShadow(color: const Color(0xFF1FA45A).withValues(alpha: 0.35), blurRadius: size * 0.3)],
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [base, dark]),
+        boxShadow: [BoxShadow(color: base.withValues(alpha: 0.35), blurRadius: size * 0.3)],
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
           Text(
-            'C',
+            initial.isEmpty ? '?' : initial.characters.first.toUpperCase(),
             style: TextStyle(
               fontSize: size * 0.58,
               height: 1,

@@ -57,7 +57,7 @@ class _HomeBody extends StatelessWidget {
           toolbarHeight: 64,
           title: Row(
             children: [
-              const AppLogo(size: 40),
+              ShopLogo.of(shop, size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -93,12 +93,17 @@ class _HomeBody extends StatelessWidget {
             child: _SearchBox(onTap: () => context.push('/shop/search')),
           ),
         ),
-        if (shop.holidayMode || !shop.isOpen)
+        if (!shop.takingOrders)
           SliverToBoxAdapter(
             child: _Notice(
               icon: Icons.door_front_door_outlined,
               color: Brand.red,
-              text: shop.holidayMode
+              text: !shop.serviceActive
+                  ? context.tr(
+                      'Online orders are paused for now. You can still browse.',
+                      'ऑनलाइन ऑर्डर अभी बंद हैं। आप सामान देख सकते हैं।',
+                    )
+                  : shop.holidayMode
                   ? (shop.holidayNote ?? context.tr('Shop is closed for a holiday.', 'दुकान छुट्टी पर बंद है।'))
                   : context.tr(
                       'Shop is closed right now. You can still browse.',

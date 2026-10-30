@@ -29,6 +29,11 @@ class Shop {
     this.codEnabled = true,
     this.upiDirectEnabled = true,
     this.gatewayEnabled = false,
+    this.slug,
+    this.serviceActive = true,
+    this.serviceNote,
+    this.brandColor,
+    this.logoPath,
   });
 
   static const defaultSlots = ['09:00-12:00', '12:00-15:00', '15:00-18:00', '18:00-21:00'];
@@ -65,7 +70,18 @@ class Shop {
   final bool upiDirectEnabled;
   final bool gatewayEnabled;
 
-  bool get takingOrders => isOpen && !holidayMode;
+  /// Short code / link name of the shop, e.g. "chhabra-general-store".
+  final String? slug;
+
+  /// False when the platform paused the shop (e.g. monthly fee not paid).
+  final bool serviceActive;
+  final String? serviceNote;
+
+  /// "#RRGGBB" chosen by the owner, or null for the default green.
+  final String? brandColor;
+  final String? logoPath;
+
+  bool get takingOrders => isOpen && !holidayMode && serviceActive;
 
   factory Shop.fromJson(Map<String, dynamic> j) => Shop(
     id: j['id'] as String,
@@ -95,6 +111,11 @@ class Shop {
     codEnabled: j['cod_enabled'] as bool? ?? true,
     upiDirectEnabled: j['upi_direct_enabled'] as bool? ?? true,
     gatewayEnabled: j['gateway_enabled'] as bool? ?? false,
+    slug: j['slug'] as String?,
+    serviceActive: (j['service_status'] ?? 'active') == 'active',
+    serviceNote: j['service_note'] as String?,
+    brandColor: j['brand_color'] as String?,
+    logoPath: j['logo_path'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -125,10 +146,39 @@ class Shop {
     'cod_enabled': codEnabled,
     'upi_direct_enabled': upiDirectEnabled,
     'gateway_enabled': gatewayEnabled,
+    'slug': slug,
+    'service_status': serviceActive ? 'active' : 'paused',
+    'service_note': serviceNote,
+    'brand_color': brandColor,
+    'logo_path': logoPath,
   };
 
   Shop copyWithJson(Map<String, dynamic> changes) => Shop.fromJson({...toJson(), ...changes});
 
   /// Fields the shop-settings screen may change (id/slug are fixed).
-  Map<String, dynamic> toEditableJson() => toJson()..remove('id');
+  Map<String, dynamic> toEditableJson() => toJson()
+    ..remove('id')
+    ..remove('slug')
+    ..remove('service_status')
+    ..remove('service_note');
+}
+
+/// One row of the "find your shop" list.
+class ShopSummary {
+  const ShopSummary({required this.slug, required this.name, this.nameHi, this.city, this.logoPath, this.brandColor});
+  final String slug;
+  final String name;
+  final String? nameHi;
+  final String? city;
+  final String? logoPath;
+  final String? brandColor;
+
+  factory ShopSummary.fromJson(Map<String, dynamic> j) => ShopSummary(
+    slug: j['slug'] as String,
+    name: j['name'] as String,
+    nameHi: j['name_hi'] as String?,
+    city: j['city'] as String?,
+    logoPath: j['logo_path'] as String?,
+    brandColor: j['brand_color'] as String?,
+  );
 }

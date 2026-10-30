@@ -87,6 +87,22 @@ class _Body extends StatelessWidget {
             style: t.textTheme.titleMedium?.copyWith(color: t.colorScheme.onSurfaceVariant),
           ),
         ),
+        if (!catalog.shop.serviceActive)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Brand.red.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              context.tr(
+                'Online orders are paused by your app provider${catalog.shop.serviceNote == null ? '' : ': ${catalog.shop.serviceNote}'}. Please contact them.',
+                'आपके ऐप प्रोवाइडर ने ऑनलाइन ऑर्डर रोके हैं${catalog.shop.serviceNote == null ? '' : ': ${catalog.shop.serviceNote}'}। कृपया उनसे बात करें।',
+              ),
+              style: const TextStyle(color: Brand.red, fontWeight: FontWeight.w700),
+            ),
+          ),
         const _TodayOrders(),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),

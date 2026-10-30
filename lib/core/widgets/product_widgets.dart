@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/catalog.dart';
 import '../../data/models/product.dart';
+import '../../data/models/shop.dart';
 import '../app_state.dart';
 import '../i18n.dart';
 import '../money.dart';
@@ -272,4 +273,36 @@ SliverGridDelegate productGridDelegate(BuildContext context) {
     mainAxisSpacing: 12,
     mainAxisExtent: tileWidth / 1.15 + productCardTextHeight(context),
   );
+}
+
+/// The shop's uploaded logo, or its monogram in the shop's colour.
+class ShopLogo extends ConsumerWidget {
+  const ShopLogo({super.key, required this.name, this.logoPath, this.brandColor, this.size = 40});
+
+  ShopLogo.of(Shop shop, {Key? key, double size = 40})
+    : this(key: key, name: shop.name, logoPath: shop.logoPath, brandColor: shop.brandColor, size: size);
+
+  final String name;
+  final String? logoPath;
+  final String? brandColor;
+  final double size;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fallback = AppLogo(size: size, letter: name, color: parseHexColor(brandColor));
+    if (logoPath == null) return fallback;
+    final backend = ref.watch(backendProvider);
+    final bytes = backend.localImage(logoPath);
+    final url = backend.imageUrl(logoPath);
+    final px = (size * MediaQuery.devicePixelRatioOf(context)).round();
+    final Widget image = bytes != null
+        ? Image.memory(bytes, fit: BoxFit.cover, cacheWidth: px)
+        : url != null
+        ? CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, memCacheWidth: px, errorWidget: (_, _, _) => fallback)
+        : fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.28),
+      child: SizedBox(width: size, height: size, child: image),
+    );
+  }
 }

@@ -6,6 +6,7 @@ import 'core/config.dart';
 import 'core/i18n.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'core/widgets/common.dart';
 
 class KiranaApp extends ConsumerWidget {
   const KiranaApp({super.key});
@@ -14,11 +15,12 @@ class KiranaApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(prefsProvider);
     final router = ref.watch(routerProvider);
+    final brand = parseHexColor(ref.watch(catalogProvider.select((c) => c.value?.shop.brandColor)));
     return MaterialApp.router(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
+      theme: buildTheme(Brightness.light, brand: brand),
+      darkTheme: buildTheme(Brightness.dark, brand: brand),
       themeMode: prefs.themeMode,
       routerConfig: router,
       builder: (context, child) {

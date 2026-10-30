@@ -19,9 +19,18 @@ import '../models/shop.dart';
 /// The real shop, backed by Supabase. Every write is checked again by RLS and
 /// Postgres functions on the server — the app is never trusted with prices.
 class SupabaseBackend implements Backend {
-  SupabaseBackend(this.shopSlug);
+  SupabaseBackend(this._shopSlug);
 
-  final String shopSlug;
+  /// The shop this app is showing (null = none chosen yet).
+  String? _shopSlug;
+  String? get shopSlug => _shopSlug;
+
+  /// Switch to another shop on the platform.
+  void useShop(String? slug) {
+    _shopSlug = slug;
+    _shopId = null;
+  }
+
   SupabaseClient get _db => Supabase.instance.client;
   String? _shopId;
   static const _bucket = 'product-images';
@@ -94,7 +103,7 @@ class SupabaseBackend implements Backend {
         .from('shop_members')
         .select('role, permissions, shops!inner(slug)')
         .eq('user_id', uid)
-        .eq('shops.slug', shopSlug)
+        .eq('shops.slug', shopSlug ?? '')
         .maybeSingle();
     if (row == null) return Membership.customer;
     return Membership(
@@ -103,9 +112,43 @@ class SupabaseBackend implements Backend {
     );
   });
 
+  @override
+  Future<List<ShopSummary>> listShops() => _guard(() async {
+    final rows = await _db
+        .from('shops')
+        .select('slug, name, name_hi, city, logo_path, brand_color')
+        .eq('listed', true)
+        .order('name')
+        .limit(500);
+    return rows.map(ShopSummary.fromJson).toList();
+  });
+
+  @override
+  Future<List<String>> myShopSlugs() => _guard(() async {
+    final uid = _db.auth.currentUser?.id;
+    if (uid == null) return const <String>[];
+    final rows = await _db.from('shop_members').select('role, shops!inner(slug)').eq('user_id', uid);
+    rows.sort((a, b) => a['role'] == 'owner' ? -1 : (b['role'] == 'owner' ? 1 : 0));
+    return [for (final r in rows) (r['shops'] as Map)['slug'] as String];
+  });
+
+  @override
+  Future<String> uploadShopLogo(ProductPhoto photo) => _guard(() async {
+    final shopId = await _requireShopId();
+    final path = '$shopId/logo/${const Uuid().v4().substring(0, 8)}.jpg';
+    await _db.storage
+        .from(_bucket)
+        .uploadBinary(
+          path,
+          photo.thumb,
+          fileOptions: const FileOptions(contentType: 'image/jpeg', cacheControl: '31536000', upsert: true),
+        );
+    return path;
+  });
+
   Future<String> _requireShopId() async {
     if (_shopId != null) return _shopId!;
-    final row = await _db.from('shops').select('id').eq('slug', shopSlug).maybeSingle();
+    final row = await _db.from('shops').select('id').eq('slug', shopSlug ?? '').maybeSingle();
     if (row == null) {
       throw const AppException(
         'Shop not found. Run the "setup-backend" GitHub Action first.',
@@ -117,7 +160,7 @@ class SupabaseBackend implements Backend {
 
   @override
   Future<Catalog> loadCatalog({required bool staffView, bool withCosts = false}) => _guard(() async {
-    final shopRow = await _db.from('shops').select().eq('slug', shopSlug).maybeSingle();
+    final shopRow = await _db.from('shops').select().eq('slug', shopSlug ?? '').maybeSingle();
     if (shopRow == null) await _requireShopId(); // throws the friendly message
     final shop = Shop.fromJson(shopRow!);
     _shopId = shop.id;

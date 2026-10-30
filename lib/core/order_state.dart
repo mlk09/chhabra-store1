@@ -11,11 +11,14 @@ import 'app_state.dart';
 /// variantId → quantity (pieces, or kg/litre for loose items). Saved on the
 /// phone so the cart survives closing the app. Demo and real shop keep separate carts.
 class CartController extends Notifier<Map<String, double>> {
-  String get _key => ref.read(sessionProvider).value?.isDemo ?? true ? 'cart:demo' : 'cart:live';
+  String get _key {
+    final s = ref.read(sessionProvider).value;
+    return s == null || s.isDemo ? 'cart:demo' : 'cart:${s.shopSlug}';
+  }
 
   @override
   Map<String, double> build() {
-    ref.watch(sessionProvider.select((s) => s.value?.isDemo));
+    ref.watch(sessionProvider.select((s) => (s.value?.isDemo, s.value?.shopSlug)));
     final raw = ref.read(localStoreProvider).pref<String>(_key);
     if (raw == null) return const {};
     try {

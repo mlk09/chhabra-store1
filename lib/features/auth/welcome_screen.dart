@@ -7,6 +7,7 @@ import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/product_widgets.dart';
 
 class WelcomeScreen extends ConsumerWidget {
   const WelcomeScreen({super.key});
@@ -15,6 +16,8 @@ class WelcomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context);
     final prefs = ref.watch(prefsProvider);
+    final shop = ref.watch(catalogProvider).value?.shop;
+    final place = [shop?.address, shop?.city].whereType<String>().where((x) => x.isNotEmpty).join(', ');
     void done(String to) {
       ref.read(prefsProvider.notifier).markWelcomeSeen();
       context.go(to);
@@ -41,22 +44,29 @@ class WelcomeScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Center(child: AppLogo(size: 96)),
+                Center(child: shop == null ? const AppLogo(size: 96) : ShopLogo.of(shop, size: 96)),
                 const SizedBox(height: 20),
                 Text(
-                  context.pick(AppConfig.appName, AppConfig.appNameHi),
+                  shop == null
+                      ? context.pick(AppConfig.appName, AppConfig.appNameHi)
+                      : context.pick(shop.name, shop.nameHi),
                   textAlign: TextAlign.center,
                   style: t.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  context.tr(
-                    'Railway Road, Karnal · Home delivery within 3 km',
-                    'रेलवे रोड, करनाल · 3 किमी तक होम डिलीवरी',
+                if (shop != null)
+                  Text(
+                    [
+                      if (place.isNotEmpty) place,
+                      if (shop.deliveryEnabled)
+                        context.tr(
+                          'Home delivery within ${shop.deliveryRadiusKm.toStringAsFixed(0)} km',
+                          '${shop.deliveryRadiusKm.toStringAsFixed(0)} किमी तक होम डिलीवरी',
+                        ),
+                    ].join(' · '),
+                    textAlign: TextAlign.center,
+                    style: t.textTheme.bodyLarge?.copyWith(color: t.colorScheme.onSurfaceVariant),
                   ),
-                  textAlign: TextAlign.center,
-                  style: t.textTheme.bodyLarge?.copyWith(color: t.colorScheme.onSurfaceVariant),
-                ),
                 const SizedBox(height: 36),
                 if (AppConfig.hasBackend) ...[
                   FilledButton.icon(

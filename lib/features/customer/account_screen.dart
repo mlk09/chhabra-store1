@@ -65,6 +65,16 @@ class AccountScreen extends ConsumerWidget {
               title: Text(context.tr('Shop management', 'दुकान मैनेजमेंट')),
               onTap: () => context.go('/owner'),
             ),
+          if (!s.isDemo && !AppConfig.isLockedToShop && AppConfig.hasBackend)
+            ListTile(
+              leading: const Icon(Icons.swap_horiz_rounded),
+              title: Text(context.tr('Change shop', 'दुकान बदलें')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                await ref.read(sessionProvider.notifier).leaveShop();
+                if (context.mounted) context.go('/pick-shop');
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
             title: Text(context.tr('Language, theme & account', 'भाषा, थीम और खाता')),

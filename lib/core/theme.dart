@@ -40,12 +40,15 @@ TextTheme _withLineHeight(TextTheme t) => t.copyWith(
   labelSmall: t.labelSmall?.copyWith(height: _lineHeight),
 );
 
-ThemeData buildTheme(Brightness brightness) {
+/// [brand]: the shop's own colour (owner picks it); null = default kirana green.
+ThemeData buildTheme(Brightness brightness, {Color? brand}) {
   final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
-    seedColor: Brand.green,
+    seedColor: brand ?? Brand.green,
     brightness: brightness,
-    primary: dark ? const Color(0xFF3DDC84) : Brand.greenDeep,
+    primary: brand == null
+        ? (dark ? const Color(0xFF3DDC84) : Brand.greenDeep)
+        : (dark ? Color.lerp(brand, Colors.white, 0.35)! : brand),
     onPrimary: dark ? const Color(0xFF00210E) : Colors.white,
     secondary: Brand.saffron,
     onSecondary: const Color(0xFF2B1600),

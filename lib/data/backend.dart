@@ -46,6 +46,16 @@ abstract class Backend {
   /// Role of the logged-in person in this shop (customer if none).
   Future<Membership> membership();
 
+  // ── Shops on the platform ──
+  /// Shops customers can pick from ("find your shop").
+  Future<List<ShopSummary>> listShops();
+
+  /// Shops where the logged-in person is owner/staff (opened automatically after login).
+  Future<List<String>> myShopSlugs();
+
+  /// Uploads the shop logo; returns the storage path to save in the shop.
+  Future<String> uploadShopLogo(ProductPhoto photo);
+
   // ── Catalog ──
   /// [staffView]: include inactive items and (if allowed) cost prices.
   Future<Catalog> loadCatalog({required bool staffView, bool withCosts = false});

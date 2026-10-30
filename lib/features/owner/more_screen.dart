@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/app_state.dart';
+import '../../core/config.dart';
 import '../../core/i18n.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models/member.dart';
@@ -28,6 +30,19 @@ class MoreScreen extends ConsumerWidget {
             title: Text(shop == null ? '' : context.pick(shop.name, shop.nameHi), style: t.textTheme.titleMedium),
             subtitle: Text('${s.user?.email ?? ''} · $role'),
           ),
+          if (shop?.slug != null && !s.isDemo)
+            _Tile(
+              Icons.share_outlined,
+              context.tr('Share shop link with customers', 'ग्राहकों को दुकान का लिंक भेजें'),
+              () => SharePlus.instance.share(
+                ShareParams(
+                  text: context.tr(
+                    'Order from ${shop!.name} online: ${AppConfig.shopLink(shop.slug!)}',
+                    '${shop.nameHi ?? shop.name} से ऑनलाइन सामान मँगाएँ: ${AppConfig.shopLink(shop.slug!)}',
+                  ),
+                ),
+              ),
+            ),
           const Divider(),
           if (s.can(Perm.offers))
             _Tile(

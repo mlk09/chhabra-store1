@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
@@ -92,13 +93,17 @@ final prefsProvider = NotifierProvider<PrefsController, Prefs>(PrefsController.n
 // ── Session: who is using the app, and against which backend ─────────────────
 
 class Session {
-  const Session({required this.backend, this.user, this.membership = Membership.customer});
+  const Session({required this.backend, this.user, this.membership = Membership.customer, this.shopSlug});
 
   final Backend backend;
   final AppUser? user;
   final Membership membership;
 
+  /// The shop being shown. Null on the platform app until someone picks one.
+  final String? shopSlug;
+
   bool get isDemo => backend.isDemo;
+  bool get hasShop => isDemo || shopSlug != null;
   bool get isLoggedIn => user != null;
   bool get isShopkeeper => membership.isShopkeeper;
   bool can(String perm) => membership.can(perm);
@@ -108,26 +113,42 @@ class SessionController extends AsyncNotifier<Session> {
   StreamSubscription<AppUser?>? _authSub;
   SupabaseBackend? _live;
 
+  static const _shopPref = 'shop';
+
   @override
   Future<Session> build() async {
-    await ref.watch(bootstrapProvider.future);
+    final store = await ref.watch(bootstrapProvider.future);
     ref.onDispose(() => _authSub?.cancel());
     if (!AppConfig.hasBackend) {
       return Session(backend: DemoBackend(asShopkeeper: false));
     }
-    final live = _live ??= SupabaseBackend(AppConfig.shopSlug);
+    final live = _live ??= SupabaseBackend(_initialShop(store));
     _authSub ??= live.authChanges().skip(1).listen((_) => _reloadLive());
     return _liveSession(live);
   }
 
+  /// Locked app → its shop. Platform: a shop link (?shop=…) wins, else the last shop used.
+  String? _initialShop(LocalStore store) {
+    if (AppConfig.isLockedToShop) return AppConfig.lockedShopSlug;
+    final fromLink = kIsWeb ? Uri.base.queryParameters['shop']?.trim().toLowerCase() : null;
+    if (fromLink != null && _validSlug(fromLink)) {
+      unawaited(store.setPref(_shopPref, fromLink));
+      return fromLink;
+    }
+    return store.pref<String>(_shopPref);
+  }
+
+  static bool _validSlug(String s) => RegExp(r'^[a-z0-9-]{3,40}$').hasMatch(s);
+
   Future<Session> _liveSession(SupabaseBackend live) async {
     final user = live.currentUser;
-    if (user == null) return Session(backend: live);
+    final slug = live.shopSlug;
+    if (user == null || slug == null) return Session(backend: live, user: user, shopSlug: slug);
     try {
-      return Session(backend: live, user: user, membership: await live.membership());
+      return Session(backend: live, user: user, membership: await live.membership(), shopSlug: slug);
     } catch (_) {
       // Offline at startup: open as customer; shopkeeper tools appear once online.
-      return Session(backend: live, user: user);
+      return Session(backend: live, user: user, shopSlug: slug);
     }
   }
 
@@ -137,8 +158,51 @@ class SessionController extends AsyncNotifier<Session> {
     state = AsyncData(await _liveSession(live));
   }
 
-  /// Call after login/sign-up so the role is known before navigating.
-  Future<void> refresh() => _reloadLive();
+  /// Call after login/sign-up: a shopkeeper lands in their own shop; then the role is loaded.
+  Future<void> refresh() async {
+    final live = _live;
+    if (live != null && !AppConfig.isLockedToShop && live.currentUser != null) {
+      try {
+        final mine = await live.myShopSlugs();
+        if (mine.isNotEmpty && !mine.contains(live.shopSlug)) await _setShop(mine.first);
+      } catch (_) {}
+    }
+    await _reloadLive();
+  }
+
+  /// Open a shop on the platform (from the shop list, a code or a link).
+  /// Returns false if no shop has this code.
+  Future<bool> selectShop(String slug) async {
+    final live = _live;
+    final s = slug.trim().toLowerCase();
+    if (live == null || !_validSlug(s)) return false;
+    final shops = await live.listShops();
+    if (!shops.any((x) => x.slug == s)) {
+      // Unlisted shops can still be opened by their exact code.
+      final previous = live.shopSlug;
+      live.useShop(s);
+      try {
+        await live.loadCatalog(staffView: false);
+      } catch (_) {
+        live.useShop(previous);
+        return false;
+      }
+    }
+    await _setShop(s);
+    await _reloadLive();
+    return true;
+  }
+
+  /// Back to "find your shop" (platform app only).
+  Future<void> leaveShop() async {
+    await _setShop(null);
+    await _reloadLive();
+  }
+
+  Future<void> _setShop(String? slug) async {
+    _live?.useShop(slug);
+    await ref.read(localStoreProvider).setPref(_shopPref, slug);
+  }
 
   void startDemo({required bool asShopkeeper}) {
     final backend = DemoBackend(asShopkeeper: asShopkeeper);
@@ -147,6 +211,7 @@ class SessionController extends AsyncNotifier<Session> {
         backend: backend,
         user: backend.currentUser,
         membership: asShopkeeper ? Membership.owner : Membership.customer,
+        shopSlug: 'demo',
       ),
     );
   }
@@ -165,7 +230,7 @@ class SessionController extends AsyncNotifier<Session> {
     if (s.isDemo) return exitDemo();
     await ref.read(localStoreProvider).clearCatalogs(); // cost prices must not stay on the phone
     await s.backend.signOut();
-    state = AsyncData(Session(backend: s.backend));
+    state = AsyncData(Session(backend: s.backend, shopSlug: s.shopSlug));
   }
 }
 
@@ -183,12 +248,15 @@ class CatalogController extends AsyncNotifier<Catalog> {
 
   bool get _staffView => _session.isShopkeeper;
   bool get _withCosts => _session.can(Perm.prices) || _session.can(Perm.reports);
-  String get _cacheKey => _staffView ? 'staff' : 'public';
+  String get _cacheKey => '${_staffView ? 'staff' : 'public'}:${_session.shopSlug}';
 
   @override
   Future<Catalog> build() async {
     _session = await ref.watch(sessionProvider.future);
     final backend = _session.backend;
+    if (!_session.hasShop) {
+      throw const AppException('Choose a shop first.', 'पहले दुकान चुनें।', 'no_shop');
+    }
     if (!backend.isDemo) {
       final cached = ref.read(localStoreProvider).readCatalog(_cacheKey);
       if (cached != null) {

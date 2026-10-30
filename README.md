@@ -8,6 +8,8 @@ Kirana app for **Chhabra General Store, Railway Road, Karnal**. One app, two sid
 Runs on **Android** (APK + Play Store AAB) and as a **web app** (iPhone users, shopkeeper on a computer).
 Built with Flutter + Supabase. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for tables, security rules and payment flow.
 
+**Selling it to the shopkeeper as a monthly service?** Read [docs/SELLING_GUIDE.md](docs/SELLING_GUIDE.md): what you give, what they give, costs, first-day checklist, pausing for unpaid fees (**shop-service** workflow).
+
 | Phase | What | Status |
 |---|---|---|
 | 1 | Login, roles, products & prices, categories, photos, demo mode | ✅ done |
