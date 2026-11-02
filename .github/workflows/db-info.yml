@@ -26,6 +26,9 @@ jobs:
             where n.nspname = 'public' and c.relkind = 'r'" > /tmp/t.json
           .github/scripts/sql.sh "select count(*) as users from auth.users" > /tmp/u.json
           .github/scripts/sql.sh "select coalesce(string_agg(id, ', '), 'none') as buckets from storage.buckets" > /tmp/b.json
+          .github/scripts/sql.sh "select coalesce((select string_agg(c.relname || ' (' || c.reltuples::bigint || ')', ', ') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'app_private'), 'no app_private schema') as t,
+            (select count(*) from information_schema.tables where table_schema = 'app_private') as n" > /tmp/a.json
+          echo "::notice title=app_private schema::$(jq -r '.[0].t' /tmp/a.json)"
           echo "::notice title=Project ${PROJECT_REF} — public tables (approx rows)::$(jq -r '.[0].tables' /tmp/t.json | cut -c1-900)"
           echo "::notice title=Login users::$(jq -r '.[0].users' /tmp/u.json)"
           echo "::notice title=Storage buckets::$(jq -r '.[0].buckets' /tmp/b.json)"
