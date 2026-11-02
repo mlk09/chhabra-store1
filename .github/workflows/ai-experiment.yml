@@ -1,0 +1,82 @@
+# Finds out which part of a photo-recognition request makes Gemini slow:
+# photo-like image vs simple image, with/without the category list schema.
+name: ai-experiment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      RAW_URL: ${{ secrets.SUPABASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Images
+        run: |
+          pip install --quiet pillow==11.3.0 numpy==2.2.6
+          python3 - <<'PY'
+          import numpy as np
+          from PIL import Image, ImageDraw, ImageFont, ImageFilter
+          f = ImageFont.truetype("assets/fonts/Mukta-Bold.ttf", 110); s = ImageFont.truetype("assets/fonts/Mukta-SemiBold.ttf", 60)
+          img = Image.new("RGB", (900, 900), (250, 250, 245)); d = ImageDraw.Draw(img)
+          d.text((150, 200), "TATA SALT", font=f, fill=(0, 70, 160)); d.text((150, 420), "Net Wt. 1 kg  MRP Rs. 30", font=s, fill=(20, 20, 20))
+          img.save("/tmp/simple.jpg", quality=78)
+          rng = np.random.default_rng(1)
+          noise = rng.integers(0, 255, (900, 900, 3), dtype=np.uint8)
+          photo = Image.fromarray(noise).filter(ImageFilter.GaussianBlur(2))
+          d = ImageDraw.Draw(photo)
+          d.rectangle([180, 120, 720, 800], fill=(200, 30, 40)); d.text((230, 300), "KISSAN", font=f, fill="white")
+          d.text((230, 480), "Tomato Ketchup 950 g", font=s, fill="white")
+          photo.save("/tmp/photo.jpg", quality=78)
+          import os; print({k: os.path.getsize(f"/tmp/{k}.jpg") for k in ["simple", "photo"]})
+          PY
+      - name: Real categories
+        run: |
+          URL=$(.github/scripts/normalize_supabase_url.sh "$RAW_URL")
+          export PROJECT_REF=$(echo "$URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co#\1#')
+          OUTFILE=/tmp/cats.json .github/scripts/sql.sh "select coalesce(json_agg(json_build_object('id', id, 'name', name)), '[]') as c from public.categories"
+          jq '.[0].c' /tmp/cats.json > /tmp/categories.json; jq length /tmp/categories.json
+      - name: Experiments
+        run: |
+          cat > /tmp/exp.ts <<'TS'
+          import { buildPrompt, buildSchema } from "./supabase/functions/product-ai/guess.ts";
+          import { encodeBase64 } from "jsr:@std/encoding@1/base64";
+          const key = Deno.env.get("GEMINI_API_KEY")!;
+          const cats = JSON.parse(await Deno.readTextFile("/tmp/categories.json"));
+          const img = (n: string) => encodeBase64(Deno.readFileSync(`/tmp/${n}.jpg`));
+          async function run(label: string, model: string, image: string, withSchema: boolean, prompt: string) {
+            const gen: Record<string, unknown> = { temperature: 0.1, responseMimeType: "application/json" };
+            if (withSchema) gen.responseSchema = buildSchema(cats);
+            const t = Date.now();
+            try {
+              const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+                method: "POST", signal: AbortSignal.timeout(40000),
+                headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: "image/jpeg", data: image } }, { text: prompt }] }], generationConfig: gen }),
+              });
+              const j = await r.json();
+              const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text ?? JSON.stringify(j?.error ?? j).slice(0, 120);
+              console.log(`::notice title=${label} → HTTP ${r.status} in ${((Date.now() - t) / 1000).toFixed(1)}s::${String(txt).replace(/\s+/g, " ").slice(0, 160)}`);
+            } catch (e) {
+              console.log(`::warning title=${label} → ${(e as Error).name} after ${((Date.now() - t) / 1000).toFixed(1)}s::`);
+            }
+          }
+          const simplePrompt = 'Identify the product. Reply JSON {"name":string,"size":string,"mrp":number}.';
+          for (const model of ["gemini-flash-lite-latest"]) {
+            await run(`A simple img, short prompt, no schema`, model, img("simple"), false, simplePrompt);
+            await run(`B simple img, full prompt, no schema`, model, img("simple"), false, buildPrompt(cats));
+            await run(`C simple img, full prompt + schema(${cats.length} cats)`, model, img("simple"), true, buildPrompt(cats));
+            await run(`D photo img, short prompt, no schema`, model, img("photo"), false, simplePrompt);
+            await run(`E photo img, full prompt + schema`, model, img("photo"), true, buildPrompt(cats));
+            await run(`F photo img, full prompt, no schema`, model, img("photo"), false, buildPrompt(cats));
+          }
+          TS
+          deno run --allow-net --allow-env --allow-read /tmp/exp.ts
