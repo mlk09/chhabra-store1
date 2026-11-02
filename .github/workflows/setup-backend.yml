@@ -38,6 +38,14 @@ jobs:
 
       - name: Apply database migrations (only ones not applied yet)
         run: |
+          # Safety: never install into a project another app already uses (e.g. Family Food).
+          .github/scripts/sql.sh "select
+              (select count(*) from information_schema.tables where table_schema = 'public') as public_tables,
+              (select count(*) from information_schema.tables where table_schema = 'public' and table_name = 'shops') as has_shops" > /tmp/guard.json
+          if [ "$(jq -r '.[0].public_tables' /tmp/guard.json)" != "0" ] && [ "$(jq -r '.[0].has_shops' /tmp/guard.json)" = "0" ]; then
+            echo "::error title=This Supabase project belongs to another app::It already has $(jq -r '.[0].public_tables' /tmp/guard.json) tables that are not this shop's. Nothing was changed. Create a NEW Supabase project for this app and update SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_ACCESS_TOKEN."
+            exit 1
+          fi
           QUIET=1 .github/scripts/sql.sh "create schema if not exists app_private;
             create table if not exists app_private.migrations (name text primary key, applied_at timestamptz not null default now());
             revoke all on schema app_private from public, anon, authenticated;"
