@@ -142,7 +142,7 @@ class SupabaseBackend implements Backend {
         .uploadBinary(
           path,
           photo.thumb,
-          fileOptions: const FileOptions(contentType: 'image/jpeg', cacheControl: '31536000', upsert: true),
+          fileOptions: const FileOptions(contentType: 'image/jpeg', cacheControl: '31536000'),
         );
     return path;
   });
@@ -222,7 +222,8 @@ class SupabaseBackend implements Backend {
       final stamp = const Uuid().v4().substring(0, 8);
       final full = '$shopId/${product.id}/$stamp.jpg';
       final thumb = '$shopId/${product.id}/${stamp}_t.jpg';
-      final opts = const FileOptions(contentType: 'image/jpeg', cacheControl: '31536000', upsert: true);
+      // Every photo gets a new file name, so no upsert (upsert would also need extra storage permissions).
+          final opts = const FileOptions(contentType: 'image/jpeg', cacheControl: '31536000');
       await _db.storage.from(_bucket).uploadBinary(full, photo.full, fileOptions: opts);
       await _db.storage.from(_bucket).uploadBinary(thumb, photo.thumb, fileOptions: opts);
       oldFull = product.imagePath;

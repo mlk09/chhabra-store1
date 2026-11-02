@@ -83,5 +83,16 @@ jobs:
           else
             echo "::error title=product-ai HTTP $CODE in ${SECS}s::$(head -c 300 /tmp/ai.json)"
           fi
+          # Photo upload exactly like the app (owner, new file name, no upsert).
+          OBJ="$SHOP/diag-test/$(date +%s).jpg"
+          CODE=$(curl -s -o /tmp/up.json -w '%{http_code}' -X POST "$URL/storage/v1/object/product-images/$OBJ" \
+            -H "Authorization: Bearer $TOKEN" -H "apikey: $ANON" -H "Content-Type: image/jpeg" -H "Cache-Control: max-age=31536000" \
+            --data-binary @/tmp/test.jpg)
+          if [ "$CODE" = "200" ]; then
+            echo "::notice title=✅ Photo upload works::owner uploaded a test photo"
+            curl -s -o /dev/null -X DELETE "$URL/storage/v1/object/product-images/$OBJ" -H "Authorization: Bearer $TOKEN" -H "apikey: $ANON"
+          else
+            echo "::error title=Photo upload HTTP $CODE::$(head -c 300 /tmp/up.json)"
+          fi
           QUIET=1 .github/scripts/sql.sh "delete from auth.users where email = '$EMAIL'"
           echo "temporary user removed"
