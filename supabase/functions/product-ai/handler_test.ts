@@ -45,7 +45,7 @@ const req = (token: string | null, body: unknown) =>
   });
 
 const handler = (fetch: typeof globalThis.fetch, geminiKey = "k") =>
-  createHandler({ supabaseUrl: "http://sb", serviceKey: "svc", geminiKey, dailyLimit: 5, fetch, modelTimeoutMs: 50 });
+  createHandler({ supabaseUrl: "http://sb", serviceKey: "svc", geminiKey, dailyLimit: 5, fetch, hedgeAfterMs: 30, totalTimeoutMs: 300 });
 
 const good = { shop_id: SHOP, image_base64: image, categories: cats };
 
@@ -100,6 +100,20 @@ Deno.test("a hanging model is abandoned and the next one answers", async () => {
   const res = await handler(fake.f)(req("good", good));
   assertEquals(res.status, 200);
   assertEquals((await res.json()).guess.name, "Tata Salt");
+});
+
+Deno.test("fast first answer → the second model is never started", async () => {
+  const fake = fakeFetch({ gemini: [200, 200] });
+  const res = await handler(fake.f)(req("good", good));
+  assertEquals(res.status, 200);
+  assertEquals(fake.calls.filter((c) => c.includes("generateContent")).length, 1);
+});
+
+Deno.test("both models hang → stops at the deadline with ai_busy", async () => {
+  const started = Date.now();
+  const res = await handler(fakeFetch({ gemini: ["hang", "hang"] }).f)(req("good", good));
+  assertEquals((await res.json()).error, "ai_busy");
+  assertEquals(Date.now() - started < 1000, true);
 });
 
 Deno.test("lite model is tried first", async () => {

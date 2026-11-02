@@ -470,7 +470,7 @@ class SupabaseBackend implements Backend {
               ],
             },
           )
-          .timeout(const Duration(seconds: 60));
+          .timeout(const Duration(seconds: 75));
       final guess = ProductGuess.fromJson(((res.data as Map)['guess'] as Map).cast<String, dynamic>());
       if (!guess.isProduct) {
         throw const AppException(

@@ -10,12 +10,13 @@ export interface Deps {
   dailyLimit: number;
   fetch: typeof fetch;
   geminiBase?: string;
-  /** Give up on one model after this long and try the next (default 20 s). */
-  modelTimeoutMs?: number;
+  /** Start the second model if the first hasn't answered by then (default 10 s). */
+  hedgeAfterMs?: number;
+  /** Give up on everything after this long (default 50 s). */
+  totalTimeoutMs?: number;
 }
 
-// Lite first: it read a test pack correctly in ~1 s, while the bigger model
-// was often "high demand" and could hang ~50 s. The bigger one is the backup.
+// Lite first: usually the quickest; the bigger model is often "high demand".
 const MODELS = ["gemini-flash-lite-latest", "gemini-flash-latest"];
 
 export function createHandler(d: Deps) {
@@ -75,7 +76,7 @@ export function createHandler(d: Deps) {
     if (!quota.ok) return json({ error: "server_error" }, 500);
     if ((await quota.json()) !== true) return json({ error: "daily_limit" }, 429);
 
-    // 5. Ask Gemini (fall back to the lighter model when busy).
+    // 5. Ask Gemini.
     const payload = {
       contents: [{
         parts: [
@@ -101,7 +102,15 @@ export function createHandler(d: Deps) {
         body: JSON.stringify({ user_id: user.id, model, status, ms, bytes, note: note?.slice(0, 300) }),
       }).catch(() => {});
     };
-    for (const model of MODELS) {
+
+    // Gemini's speed swings a lot (1 s one hour, 20 s the next). Start the
+    // fast model; if it hasn't answered after hedgeAfterMs (or failed), also
+    // start the other one. First good answer wins; everything stops at the deadline.
+    const stop = new AbortController();
+    const deadline = setTimeout(() => stop.abort(), d.totalTimeoutMs ?? 50_000);
+    let winner: ReturnType<typeof cleanGuess> | null = null;
+
+    const attempt = async (model: string): Promise<boolean> => {
       const started = Date.now();
       let res: Response;
       try {
@@ -109,32 +118,55 @@ export function createHandler(d: Deps) {
           method: "POST",
           headers: { "x-goog-api-key": d.geminiKey, "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(d.modelTimeoutMs ?? 20_000),
+          signal: stop.signal,
         });
       } catch (e) {
-        console.error(`gemini ${model}: ${e instanceof Error ? e.name : e} (timeout or network)`);
+        if (winner) return false; // stopped because the other model already answered
         lastStatus = 504;
         log(model, 504, Date.now() - started, e instanceof Error ? e.name : String(e));
-        continue;
+        return false;
       }
-      lastStatus = res.status;
       if (!res.ok) {
+        lastStatus = res.status;
         const text = (await res.text()).slice(0, 300);
         console.error(`gemini ${model} HTTP ${res.status}: ${text}`);
         log(model, res.status, Date.now() - started, text);
-        if (res.status === 429 || res.status >= 500 || res.status === 404) continue;
-        break;
+        return false;
       }
-      const data = await res.json();
       try {
+        const data = await res.json();
         const guess = cleanGuess(JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text), categories);
+        if (winner) return false;
+        winner = guess;
         log(model, 200, Date.now() - started, guess.name);
-        return json({ guess, tried });
+        stop.abort(); // cancel the other model
+        return true;
       } catch {
-        console.error(`gemini ${model}: unreadable answer`);
         log(model, 200, Date.now() - started, "unreadable answer");
+        return false;
       }
-    }
+    };
+
+    const first = attempt(MODELS[0]);
+    const second = (async () => {
+      // Wait for the hedge delay — or less, if the first model already failed.
+      await new Promise<void>((resolve) => {
+        const t = setTimeout(resolve, d.hedgeAfterMs ?? 10_000);
+        const done = () => {
+          clearTimeout(t);
+          resolve();
+        };
+        first.then(done);
+        stop.signal.addEventListener("abort", done, { once: true });
+      });
+      if (winner || stop.signal.aborted) return false;
+      return attempt(MODELS[1]);
+    })();
+    await Promise.allSettled([first, second]);
+    clearTimeout(deadline);
+    stop.abort();
+
+    if (winner) return json({ guess: winner, tried });
     return json(
       { error: lastStatus === 429 || lastStatus === 503 || lastStatus === 504 ? "ai_busy" : "ai_failed", tried },
       502,
