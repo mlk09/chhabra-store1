@@ -6,7 +6,7 @@ const image = "A".repeat(200);
 const cats = [{ id: "c-salt", name: "Salt" }];
 
 /** Fake Supabase + Gemini. */
-function fakeFetch(opts: { member?: unknown; quota?: boolean; gemini?: number[] } = {}) {
+function fakeFetch(opts: { member?: unknown; quota?: boolean; gemini?: (number | "hang")[] } = {}) {
   const calls: string[] = [];
   const geminiCodes = [...(opts.gemini ?? [200])];
   const f = (input: string | URL | Request, init?: RequestInit) => {
@@ -22,6 +22,12 @@ function fakeFetch(opts: { member?: unknown; quota?: boolean; gemini?: number[] 
     if (url.includes("/rpc/ai_take_quota")) return Promise.resolve(Response.json(opts.quota ?? true));
     if (url.includes("generateContent")) {
       const code = geminiCodes.shift() ?? 200;
+      if (code === "hang") {
+        // Like a Gemini model stuck under load: only ends when the caller aborts.
+        return new Promise<Response>((_, reject) =>
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("timed out", "TimeoutError")))
+        );
+      }
       if (code !== 200) return Promise.resolve(new Response("busy", { status: code }));
       const answer = { is_product: true, name: "Tata Salt", unit: "kg", unit_qty: 1, mrp: 30, category_id: "c-salt", confidence: 0.9 };
       return Promise.resolve(Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] }));
@@ -39,7 +45,7 @@ const req = (token: string | null, body: unknown) =>
   });
 
 const handler = (fetch: typeof globalThis.fetch, geminiKey = "k") =>
-  createHandler({ supabaseUrl: "http://sb", serviceKey: "svc", geminiKey, dailyLimit: 5, fetch });
+  createHandler({ supabaseUrl: "http://sb", serviceKey: "svc", geminiKey, dailyLimit: 5, fetch, modelTimeoutMs: 50 });
 
 const good = { shop_id: SHOP, image_base64: image, categories: cats };
 
@@ -87,6 +93,24 @@ Deno.test("busy first model → falls back to the second", async () => {
   const res = await handler(fake.f)(req("good", good));
   assertEquals(res.status, 200);
   assertEquals(fake.calls.filter((c) => c.includes("generateContent")).length, 2);
+});
+
+Deno.test("a hanging model is abandoned and the next one answers", async () => {
+  const fake = fakeFetch({ gemini: ["hang", 200] });
+  const res = await handler(fake.f)(req("good", good));
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).guess.name, "Tata Salt");
+});
+
+Deno.test("lite model is tried first", async () => {
+  const fake = fakeFetch();
+  await handler(fake.f)(req("good", good));
+  assertEquals(fake.calls.find((c) => c.includes("generateContent"))?.includes("gemini-flash-lite-latest"), true);
+});
+
+Deno.test("high demand (503) on both → 502 ai_busy", async () => {
+  const res = await handler(fakeFetch({ gemini: [503, 503] }).f)(req("good", good));
+  assertEquals((await res.json()).error, "ai_busy");
 });
 
 Deno.test("both models busy → 502 ai_busy", async () => {

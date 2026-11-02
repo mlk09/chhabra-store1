@@ -10,9 +10,13 @@ export interface Deps {
   dailyLimit: number;
   fetch: typeof fetch;
   geminiBase?: string;
+  /** Give up on one model after this long and try the next (default 20 s). */
+  modelTimeoutMs?: number;
 }
 
-const MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest"];
+// Lite first: it read a test pack correctly in ~1 s, while the bigger model
+// was often "high demand" and could hang ~50 s. The bigger one is the backup.
+const MODELS = ["gemini-flash-lite-latest", "gemini-flash-latest"];
 
 export function createHandler(d: Deps) {
   const geminiBase = d.geminiBase ?? "https://generativelanguage.googleapis.com";
@@ -87,11 +91,19 @@ export function createHandler(d: Deps) {
     };
     let lastStatus = 0;
     for (const model of MODELS) {
-      const res = await d.fetch(`${geminiBase}/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "x-goog-api-key": d.geminiKey, "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let res: Response;
+      try {
+        res = await d.fetch(`${geminiBase}/v1beta/models/${model}:generateContent`, {
+          method: "POST",
+          headers: { "x-goog-api-key": d.geminiKey, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(d.modelTimeoutMs ?? 20_000),
+        });
+      } catch (e) {
+        console.error(`gemini ${model}: ${e instanceof Error ? e.name : e} (timeout or network)`);
+        lastStatus = 504;
+        continue;
+      }
       lastStatus = res.status;
       if (!res.ok) {
         console.error(`gemini ${model} HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -105,6 +117,6 @@ export function createHandler(d: Deps) {
         console.error(`gemini ${model}: unreadable answer`);
       }
     }
-    return json({ error: lastStatus === 429 ? "ai_busy" : "ai_failed" }, 502);
+    return json({ error: lastStatus === 429 || lastStatus === 503 || lastStatus === 504 ? "ai_busy" : "ai_failed" }, 502);
   };
 }

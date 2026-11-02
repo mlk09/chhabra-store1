@@ -1,5 +1,5 @@
 # Checks the photo-recognition chain and reports timings/errors as annotations
-# (no secrets shown): Gemini models directly, the product-ai function, its logs.
+# (no secrets shown): Gemini models directly, then a real photo through product-ai.
 name: diagnose-ai
 
 on:
@@ -63,20 +63,25 @@ jobs:
             SECS=$(python3 -c "import time;print(round(time.time()-$START,1))")
             echo "::notice title=product-ai $m → HTTP $CODE in ${SECS}s::$(head -c 200 /tmp/f.json) (POST without login should be 401)"
           done
-      - name: 3 · Recent function logs
+      - name: 3 · Real photo through product-ai (temporary owner, removed afterwards)
         run: |
           URL=$(.github/scripts/normalize_supabase_url.sh "$RAW_URL")
-          REF=$(echo "$URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co#\1#')
-          for table in function_logs function_edge_logs; do
-            if [ $table = function_logs ]; then SQL="select timestamp, event_message from function_logs order by timestamp desc limit 15"; else SQL="select timestamp, event_message, response.status_code as status, metadata.execution_time_ms as ms from function_edge_logs cross join unnest(metadata) as metadata cross join unnest(metadata.response) as response order by timestamp desc limit 15"; fi
-            CODE=$(curl -s -o /tmp/l.json -w '%{http_code}' -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs.all" \
-              --data-urlencode "sql=$SQL" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" || echo 000)
-            if [ "$CODE" = "200" ]; then
-              jq -r '.result[]? | [(.timestamp|tostring), (.status // ""|tostring), (.ms // ""|tostring), (.event_message // "" | tostring | gsub("\n";" "))] | join(" | ")' /tmp/l.json | head -15 | while IFS= read -r line; do
-                echo "::notice title=$table::$(echo "$line" | cut -c1-300)"
-              done
-              [ "$(jq '.result | length' /tmp/l.json)" = "0" ] && echo "::notice title=$table::no rows"
-            else
-              echo "::warning title=$table HTTP $CODE::$(head -c 200 /tmp/l.json)"
-            fi
-          done
+          export PROJECT_REF=$(echo "$URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co#\1#')
+          EMAIL="diag-$(date +%s)-$RANDOM@example.com"; PASS="Diag-$RANDOM-$RANDOM-x"
+          curl -s -o /tmp/s.json "$URL/auth/v1/signup" -H "apikey: $ANON" -H "Content-Type: application/json" -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}"
+          TOKEN=$(jq -r '.access_token // empty' /tmp/s.json)
+          [ -z "$TOKEN" ] && { echo "::error title=Test sign-up failed::$(jq -c . /tmp/s.json | cut -c1-200)"; exit 0; }
+          QUIET=1 .github/scripts/sql.sh "insert into public.shop_members (shop_id, user_id, role) select s.id, u.id, 'owner' from public.shops s, auth.users u where s.slug = 'chhabra-general-store' and u.email = '$EMAIL'"
+          OUTFILE=/tmp/shop.json .github/scripts/sql.sh "select id from public.shops where slug = 'chhabra-general-store'"
+          SHOP=$(jq -r '.[0].id' /tmp/shop.json)
+          jq -n --rawfile img /tmp/test.b64 --arg shop "$SHOP" '{shop_id:$shop, image_base64:($img|rtrimstr("\n")), categories:[{id:"none-test",name:"Sugar, Salt & Jaggery"}]}' > /tmp/req.json
+          START=$(date +%s.%N)
+          CODE=$(curl -s -m 70 -o /tmp/ai.json -w '%{http_code}' -X POST "$URL/functions/v1/product-ai" -H "Authorization: Bearer $TOKEN" -H "apikey: $ANON" -H "Content-Type: application/json" --data-binary @/tmp/req.json || echo 000)
+          SECS=$(python3 -c "import time;print(round(time.time()-$START,1))")
+          if [ "$CODE" = "200" ]; then
+            echo "::notice title=✅ product-ai answered in ${SECS}s::$(jq -c '.guess | {name, size_label, mrp, confidence}' /tmp/ai.json)"
+          else
+            echo "::error title=product-ai HTTP $CODE in ${SECS}s::$(head -c 300 /tmp/ai.json)"
+          fi
+          QUIET=1 .github/scripts/sql.sh "delete from auth.users where email = '$EMAIL'"
+          echo "temporary user removed"
