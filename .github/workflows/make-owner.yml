@@ -33,16 +33,17 @@ jobs:
           export PROJECT_REF=$(echo "$URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co#\1#')
           EMAIL=$(echo "$EMAIL" | tr -d '[:space:]' | tr 'A-Z' 'a-z')
           [[ "$EMAIL" =~ ^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$ ]] || { echo "::error::That does not look like an email address."; exit 1; }
-          FOUND=$(.github/scripts/sql.sh "select count(*) as n from auth.users where lower(email) = '$EMAIL'" | jq -r '.[0].n')
+          .github/scripts/sql.sh "select count(*) as n from auth.users where lower(email) = '$EMAIL'" > /tmp/found.json
+          FOUND=$(jq -r '.[0].n' /tmp/found.json)
           [ "$FOUND" = "1" ] || { echo "::error title=Not signed up yet::No account with $EMAIL. Sign up in the app first, then run this again."; exit 1; }
           if [ "${{ inputs.action }}" = "remove" ]; then
-            .github/scripts/sql.sh "delete from public.shop_members m using auth.users u, public.shops s
-              where m.user_id = u.id and m.shop_id = s.id and lower(u.email) = '$EMAIL' and s.slug = 'chhabra-general-store'" >/dev/null
+            QUIET=1 .github/scripts/sql.sh "delete from public.shop_members m using auth.users u, public.shops s
+              where m.user_id = u.id and m.shop_id = s.id and lower(u.email) = '$EMAIL' and s.slug = 'chhabra-general-store'"
             echo "::notice title=Removed::$EMAIL is now a normal customer."
           else
-            .github/scripts/sql.sh "insert into public.shop_members (shop_id, user_id, role, permissions)
+            QUIET=1 .github/scripts/sql.sh "insert into public.shop_members (shop_id, user_id, role, permissions)
               select s.id, u.id, 'owner', '{}' from public.shops s, auth.users u
               where s.slug = 'chhabra-general-store' and lower(u.email) = '$EMAIL'
-              on conflict (shop_id, user_id) do update set role = 'owner'" >/dev/null
+              on conflict (shop_id, user_id) do update set role = 'owner'"
             echo "::notice title=Owner set::$EMAIL is now the shop owner. Log out and log in again in the app."
           fi

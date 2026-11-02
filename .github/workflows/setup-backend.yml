@@ -38,23 +38,24 @@ jobs:
 
       - name: Apply database migrations (only ones not applied yet)
         run: |
-          .github/scripts/sql.sh "create schema if not exists app_private;
+          QUIET=1 .github/scripts/sql.sh "create schema if not exists app_private;
             create table if not exists app_private.migrations (name text primary key, applied_at timestamptz not null default now());
-            revoke all on schema app_private from public, anon, authenticated;" >/dev/null
-          APPLIED=$(.github/scripts/sql.sh "select coalesce(json_agg(name), '[]') as names from app_private.migrations" | jq -r '.[0].names[]?')
+            revoke all on schema app_private from public, anon, authenticated;"
+          .github/scripts/sql.sh "select coalesce(json_agg(name), '[]') as names from app_private.migrations" > /tmp/applied.json
+          APPLIED=$(jq -r '.[0].names[]?' /tmp/applied.json)
           for f in supabase/migrations/*.sql; do
             name=$(basename "$f")
             if echo "$APPLIED" | grep -qx "$name"; then echo "✓ $name (already applied)"; continue; fi
             echo "▶ applying $name"
             # Migration + its record run as ONE request → all or nothing.
-            { cat "$f"; printf "\ninsert into app_private.migrations (name) values ('%s');\n" "$name"; } > /tmp/m.sql
-            .github/scripts/sql.sh -f /tmp/m.sql >/dev/null
+            { cat "$f"; printf "\ninsert into app_private.migrations (name) values ('%s');\n" "$name"; } > "$f.with-record"
+            QUIET=1 .github/scripts/sql.sh -f "$f.with-record" || { echo "::error title=Migration $name failed::See the red message above. Nothing from this migration was applied."; exit 1; }
             echo "::notice title=Migration applied::$name"
           done
 
       - name: Shop + starter categories
         run: |
-          .github/scripts/sql.sh -f supabase/seed/seed.sql >/dev/null
+          QUIET=1 .github/scripts/sql.sh -f supabase/seed/seed.sql
           .github/scripts/sql.sh "select name, city from public.shops"
 
       - name: Login settings (no confirmation email, reset links open the web app)
