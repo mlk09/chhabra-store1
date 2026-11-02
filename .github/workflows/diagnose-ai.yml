@@ -1,0 +1,81 @@
+# Checks the photo-recognition chain and reports timings/errors as annotations
+# (no secrets shown): Gemini models directly, the product-ai function, its logs.
+name: diagnose-ai
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      RAW_URL: ${{ secrets.SUPABASE_URL }}
+      ANON: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test photo
+        run: |
+          python3 - <<'PY'
+          from PIL import Image, ImageDraw, ImageFont
+          img = Image.new("RGB", (900, 900), (250, 250, 245))
+          d = ImageDraw.Draw(img)
+          f = ImageFont.truetype("assets/fonts/Mukta-Bold.ttf", 110)
+          s = ImageFont.truetype("assets/fonts/Mukta-SemiBold.ttf", 60)
+          d.rectangle([80, 80, 820, 820], outline=(0, 70, 160), width=12)
+          d.text((150, 200), "TATA SALT", font=f, fill=(0, 70, 160))
+          d.text((150, 420), "Net Wt. 1 kg", font=s, fill=(20, 20, 20))
+          d.text((150, 520), "MRP Rs. 30.00", font=s, fill=(20, 20, 20))
+          img.save("/tmp/test.jpg", quality=80)
+          PY
+          base64 -w0 /tmp/test.jpg > /tmp/test.b64
+          echo "image bytes: $(stat -c%s /tmp/test.jpg)"
+      - name: 1 · Gemini models directly (time + answer)
+        run: |
+          [ -z "$GEMINI_API_KEY" ] && { echo "::error::GEMINI_API_KEY secret missing"; exit 0; }
+          for model in gemini-flash-latest gemini-flash-lite-latest gemini-2.5-flash gemini-2.5-flash-lite; do
+            for think in default off; do
+              if [ "$think" = off ]; then TC=',"thinkingConfig":{"thinkingBudget":0}'; else TC=''; fi
+              jq -n --rawfile img /tmp/test.b64 --arg tc "$TC" '{contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:($img|rtrimstr("\n"))}},{text:"Identify the product. Reply JSON {\"name\":string,\"size\":string,\"mrp\":number}."}]}],generationConfig:{temperature:0.1,responseMimeType:"application/json"}}' > /tmp/body.json
+              [ -n "$TC" ] && jq '.generationConfig.thinkingConfig={"thinkingBudget":0}' /tmp/body.json > /tmp/b2 && mv /tmp/b2 /tmp/body.json
+              START=$(date +%s.%N)
+              CODE=$(curl -s -m 90 -o /tmp/r.json -w '%{http_code}' "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent" \
+                -H "x-goog-api-key: $GEMINI_API_KEY" -H "Content-Type: application/json" --data-binary @/tmp/body.json || echo 000)
+              SECS=$(python3 -c "import time;print(round(time.time()-$START,1))")
+              if [ "$CODE" = "200" ]; then
+                echo "::notice title=$model thinking=$think → ${SECS}s::$(jq -r '.candidates[0].content.parts[0].text' /tmp/r.json | tr '\n' ' ' | cut -c1-160) · model=$(jq -r '.modelVersion // "?"' /tmp/r.json)"
+              else
+                echo "::warning title=$model thinking=$think → HTTP $CODE in ${SECS}s::$(jq -c '.error.message // .' /tmp/r.json 2>/dev/null | cut -c1-200)"
+              fi
+            done
+          done
+      - name: 2 · product-ai function reachable
+        run: |
+          URL=$(.github/scripts/normalize_supabase_url.sh "$RAW_URL")
+          for m in OPTIONS POST; do
+            START=$(date +%s.%N)
+            CODE=$(curl -s -m 60 -o /tmp/f.json -w '%{http_code}' -X $m "$URL/functions/v1/product-ai" -H "Origin: https://mlk09.github.io" -H "apikey: $ANON" -H "Content-Type: application/json" -d '{}' || echo 000)
+            SECS=$(python3 -c "import time;print(round(time.time()-$START,1))")
+            echo "::notice title=product-ai $m → HTTP $CODE in ${SECS}s::$(head -c 200 /tmp/f.json) (POST without login should be 401)"
+          done
+      - name: 3 · Recent function logs
+        run: |
+          URL=$(.github/scripts/normalize_supabase_url.sh "$RAW_URL")
+          REF=$(echo "$URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co#\1#')
+          for table in function_logs function_edge_logs; do
+            if [ $table = function_logs ]; then SQL="select timestamp, event_message from function_logs order by timestamp desc limit 15"; else SQL="select timestamp, event_message, response.status_code as status, metadata.execution_time_ms as ms from function_edge_logs cross join unnest(metadata) as metadata cross join unnest(metadata.response) as response order by timestamp desc limit 15"; fi
+            CODE=$(curl -s -o /tmp/l.json -w '%{http_code}' -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs.all" \
+              --data-urlencode "sql=$SQL" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" || echo 000)
+            if [ "$CODE" = "200" ]; then
+              jq -r '.result[]? | [(.timestamp|tostring), (.status // ""|tostring), (.ms // ""|tostring), (.event_message // "" | tostring | gsub("\n";" "))] | join(" | ")' /tmp/l.json | head -15 | while IFS= read -r line; do
+                echo "::notice title=$table::$(echo "$line" | cut -c1-300)"
+              done
+              [ "$(jq '.result | length' /tmp/l.json)" = "0" ] && echo "::notice title=$table::no rows"
+            else
+              echo "::warning title=$table HTTP $CODE::$(head -c 200 /tmp/l.json)"
+            fi
+          done
