@@ -481,6 +481,23 @@ class SupabaseBackend implements Backend {
       return guess;
     } on FunctionException catch (e) {
       final code = e.details is Map ? (e.details as Map)['error'] : null;
+      // e.g. "lite 503 20.0s · flash 503 2.1s" — helps support see what Google said.
+      final tried = e.details is Map && (e.details as Map)['tried'] is List
+          ? ((e.details as Map)['tried'] as List)
+                .whereType<Map>()
+                .map(
+                  (t) =>
+                      '${(t['model'] as String).replaceAll('gemini-', '')} ${t['status']} ${((t['ms'] as num) / 1000).toStringAsFixed(1)}s',
+                )
+                .join(' · ')
+          : '';
+      if (code == 'ai_busy' || code == 'ai_failed') {
+        throw AppException(
+          'Google AI is busy right now. Please try again in a minute.${tried.isEmpty ? '' : '\n($tried)'}',
+          'Google AI अभी व्यस्त है। एक मिनट बाद फिर कोशिश करें।${tried.isEmpty ? '' : '\n($tried)'}',
+          code as String,
+        );
+      }
       throw switch (code) {
         'ai_not_configured' => const AppException(
           'AI is not set up yet: add the GEMINI_API_KEY secret and run "setup-backend" (README → AI).',

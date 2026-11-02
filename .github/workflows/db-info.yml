@@ -32,6 +32,8 @@ jobs:
           [ -f /tmp/ai.json ] && echo "::notice title=AI requests that reached the server::$(jq -r '.[0].rows' /tmp/ai.json)"
           OUTFILE=/tmp/own.json .github/scripts/sql.sh "select coalesce(string_agg(u.email || ' (' || m.role || ')', ', '), 'none') as o from public.shop_members m join auth.users u on u.id = m.user_id" || true
           [ -f /tmp/own.json ] && echo "::notice title=Shop owners/staff::$(jq -r '.[0].o' /tmp/own.json)"
+          OUTFILE=/tmp/log.json .github/scripts/sql.sh "select at, model, status, ms, bytes, note from public.ai_log order by at desc limit 15" || true
+          [ -f /tmp/log.json ] && jq -r '.[] | "\(.at) | \(.model) | HTTP \(.status) | \(.ms) ms | \(.bytes) b64 bytes | \(.note // "")"' /tmp/log.json | while IFS= read -r l; do echo "::notice title=AI try::${l:0:280}"; done
           echo "::notice title=app_private schema::$(jq -r '.[0].t' /tmp/a.json)"
           echo "::notice title=Project ${PROJECT_REF} — public tables (approx rows)::$(jq -r '.[0].tables' /tmp/t.json | cut -c1-900)"
           echo "::notice title=Login users::$(jq -r '.[0].users' /tmp/u.json)"

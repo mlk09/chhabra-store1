@@ -90,7 +90,19 @@ export function createHandler(d: Deps) {
       },
     };
     let lastStatus = 0;
+    const tried: { model: string; status: number; ms: number }[] = [];
+    const bytes = (body.image_base64 as string).length;
+    // Best-effort record of each try (never blocks or breaks the answer).
+    const log = (model: string, status: number, ms: number, note?: string) => {
+      tried.push({ model, status, ms });
+      admin("/rest/v1/ai_log", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ user_id: user.id, model, status, ms, bytes, note: note?.slice(0, 300) }),
+      }).catch(() => {});
+    };
     for (const model of MODELS) {
+      const started = Date.now();
       let res: Response;
       try {
         res = await d.fetch(`${geminiBase}/v1beta/models/${model}:generateContent`, {
@@ -102,21 +114,30 @@ export function createHandler(d: Deps) {
       } catch (e) {
         console.error(`gemini ${model}: ${e instanceof Error ? e.name : e} (timeout or network)`);
         lastStatus = 504;
+        log(model, 504, Date.now() - started, e instanceof Error ? e.name : String(e));
         continue;
       }
       lastStatus = res.status;
       if (!res.ok) {
-        console.error(`gemini ${model} HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+        const text = (await res.text()).slice(0, 300);
+        console.error(`gemini ${model} HTTP ${res.status}: ${text}`);
+        log(model, res.status, Date.now() - started, text);
         if (res.status === 429 || res.status >= 500 || res.status === 404) continue;
         break;
       }
       const data = await res.json();
       try {
-        return json({ guess: cleanGuess(JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text), categories) });
+        const guess = cleanGuess(JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text), categories);
+        log(model, 200, Date.now() - started, guess.name);
+        return json({ guess, tried });
       } catch {
         console.error(`gemini ${model}: unreadable answer`);
+        log(model, 200, Date.now() - started, "unreadable answer");
       }
     }
-    return json({ error: lastStatus === 429 || lastStatus === 503 || lastStatus === 504 ? "ai_busy" : "ai_failed" }, 502);
+    return json(
+      { error: lastStatus === 429 || lastStatus === 503 || lastStatus === 504 ? "ai_busy" : "ai_failed", tried },
+      502,
+    );
   };
 }
