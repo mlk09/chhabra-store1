@@ -46,7 +46,7 @@ jobs:
           jq '.[0].c' /tmp/cats.json > /tmp/categories.json; jq length /tmp/categories.json
       - name: Experiments
         run: |
-          cat > /tmp/exp.ts <<'TS'
+          cat > ./exp.ts <<'TS'
           import { buildPrompt, buildSchema } from "./supabase/functions/product-ai/guess.ts";
           import { encodeBase64 } from "jsr:@std/encoding@1/base64";
           const key = Deno.env.get("GEMINI_API_KEY")!;
@@ -79,4 +79,4 @@ jobs:
             await run(`F photo img, full prompt, no schema`, model, img("photo"), false, buildPrompt(cats));
           }
           TS
-          deno run --allow-net --allow-env --allow-read /tmp/exp.ts
+          deno run --allow-net --allow-env --allow-read ./exp.ts 2>&1 | tail -40
