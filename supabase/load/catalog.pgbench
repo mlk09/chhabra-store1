@@ -1,0 +1,10 @@
+-- A visitor opening the shop: the same query the app sends, 500 products per page, through RLS.
+\set page random(0, 5)
+BEGIN;
+SET LOCAL ROLE anon;
+SELECT count(*), sum(length(x::text)) FROM (
+  SELECT p.*, (SELECT json_agg(v) FROM public.product_variants v WHERE v.product_id = p.id) AS product_variants
+  FROM public.products p
+  WHERE p.shop_id = 'e0000000-0000-0000-0000-000000000001' AND p.is_active
+  ORDER BY p.id LIMIT 500 OFFSET :page * 500) x;
+COMMIT;

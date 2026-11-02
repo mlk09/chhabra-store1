@@ -120,6 +120,8 @@ Limit: 300 photos per person per day (protects your free quota).
 
 **Not yet:** online UPI/Razorpay payment (Phase 3). Alerts when the app is fully closed need Firebase push (Phase 5).
 
+**Rush-hour (load) test:** Actions → **load-test** → Run workflow. It builds a throw-away database inside GitHub (never your Supabase): 3,000 products, 2,000 customers, 50 people ordering at the same moment, the shop accepting/cancelling meanwhile, and double taps. Then it checks that stock never goes below zero or is oversold, every bill adds up, order numbers have no gaps, coupon limits hold and one tap makes one order. It runs on its own whenever the database code changes. Locally: `PGHOST=/var/run/postgresql PGUSER=postgres tools/load_test.sh`.
+
 ## Adding products & photos
 
 **How saving works**

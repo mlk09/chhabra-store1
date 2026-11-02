@@ -1,0 +1,3 @@
+-- Same customer sends the same order twice at the same moment (double tap / retry on slow internet).
+\set k random(1, 150)
+SELECT loadtest.place(1850 + :k, md5('dup' || :k)::uuid);

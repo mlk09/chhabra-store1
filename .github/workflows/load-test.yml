@@ -1,0 +1,31 @@
+# Rush-hour test on a throw-away database inside GitHub (never touches Supabase):
+# 3,000 products, 2,000 customers, 50 ordering at once, shop accepting/cancelling,
+# double taps. Then checks every order, rupee and packet. Runs on its own when
+# the database code changes, or from Actions → load-test → Run workflow.
+name: load-test
+on:
+  workflow_dispatch:
+    inputs:
+      clients: { description: "People ordering at the same moment", default: "50" }
+      seconds: { description: "How long the rush lasts (seconds)", default: "60" }
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**", "supabase/load/**", "tools/load_test.sh"]
+permissions: { contents: read }
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Start a local Postgres (the runner has one installed)
+        run: |
+          sudo systemctl start postgresql.service
+          until pg_isready -h /var/run/postgresql; do sleep 1; done
+      - name: Load test
+        run: |
+          sudo -u postgres env PATH="/usr/lib/postgresql/$(ls /usr/lib/postgresql | sort -n | tail -1)/bin:$PATH" \
+            PGHOST=/var/run/postgresql CLIENTS="${{ inputs.clients || '50' }}" SECONDS_RUN="${{ inputs.seconds || '60' }}" \
+            bash tools/load_test.sh 2>&1 | grep -v NOTICE | tee load.txt
+          ok=$(grep -E '^ order +\| ok ' load.txt | head -1 | awk -F'|' '{print $3}' | tr -d ' ')
+          echo "::notice title=Load test::all checks passed · ${ok:-?} orders placed in ${{ inputs.seconds || '60' }} s by ${{ inputs.clients || '50' }} people at once"

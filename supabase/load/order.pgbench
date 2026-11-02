@@ -1,0 +1,2 @@
+\set c random(1, 1850)
+SELECT loadtest.place(:c);
