@@ -35,6 +35,7 @@ jobs:
           [ -n "$missing" ] && { echo "::error::Missing repository secrets:$missing"; exit 1; }
           URL=$(.github/scripts/normalize_supabase_url.sh "$RAW_URL") || { echo "::error::SUPABASE_URL is not a Supabase project URL (https://<ref>.supabase.co)"; exit 1; }
           echo "PROJECT_REF=$(echo "$URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co#\1#')" >> "$GITHUB_ENV"
+          echo "::notice title=Supabase project from SUPABASE_URL::$(echo "$URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co#\1#') — the access token must be made for this same project"
 
       - name: Apply database migrations (only ones not applied yet)
         run: |
