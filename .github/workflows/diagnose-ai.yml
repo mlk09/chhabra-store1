@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Test photo
         run: |
+          pip install --quiet pillow==11.3.0
           python3 - <<'PY'
           from PIL import Image, ImageDraw, ImageFont
           img = Image.new("RGB", (900, 900), (250, 250, 245))
