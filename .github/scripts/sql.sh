@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Runs SQL on the Supabase project through the Management API.
 #   .github/scripts/sql.sh "select 1"      or      .github/scripts/sql.sh -f file.sql
-# Prints the JSON result (unless QUIET=1). On failure prints the real error
-# as a red annotation on the run page, then exits 1.
+# Prints the JSON result (or writes it to $OUTFILE; nothing if QUIET=1).
+# On failure prints the real error as a red annotation on the run page
+# (always on stdout, never into $OUTFILE), then exits 1.
 # Needs PROJECT_REF and SUPABASE_ACCESS_TOKEN in the environment.
 set -euo pipefail
 if [ "${1:-}" = "-f" ]; then QUERY=$(cat "$2"); LABEL="$2"; else QUERY="$1"; LABEL="query"; fi
@@ -23,4 +24,4 @@ if [ "$CODE" -lt 200 ] || [ "$CODE" -ge 300 ]; then
   esac
   exit 1
 fi
-[ "${QUIET:-0}" = "1" ] || cat "$OUT"
+if [ -n "${OUTFILE:-}" ]; then cp "$OUT" "$OUTFILE"; elif [ "${QUIET:-0}" != "1" ]; then cat "$OUT"; fi
