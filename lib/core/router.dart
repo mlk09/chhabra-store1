@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,6 +34,10 @@ import 'config.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
+/// True when the web app was opened from a password-reset email link
+/// (…/app/?reset=1). Cleared once the new password is saved or skipped.
+bool pendingPasswordReset = kIsWeb && Uri.base.queryParameters['reset'] == '1';
+
 /// Where a person lands after startup / login.
 String homeFor(Session s, Prefs prefs) {
   if (!s.hasShop) return '/pick-shop';
@@ -60,6 +65,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       if (!session.hasValue) return loc == '/splash' ? null : '/splash';
       final s = session.requireValue;
+      if (pendingPasswordReset && s.isLoggedIn && !s.isDemo && loc != '/reset-password') return '/reset-password';
       if (loc == '/splash' || loc == '/error') return homeFor(s, ref.read(prefsProvider));
       // Platform app with no shop chosen yet: only shop-finder and login screens.
       const noShopOk = {'/pick-shop', '/login', '/signup', '/forgot', '/reset-password', '/settings'};

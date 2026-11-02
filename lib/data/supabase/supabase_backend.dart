@@ -78,7 +78,8 @@ class SupabaseBackend implements Backend {
   Future<void> sendPasswordReset(String email) => _guard(
     () => _db.auth.resetPasswordForEmail(
       email.trim(),
-      redirectTo: AppConfig.webAppUrl.isEmpty ? null : AppConfig.webAppUrl,
+      // ?reset=1 tells the app to open "set new password" (the auth event can fire before the app listens).
+      redirectTo: AppConfig.webAppUrl.isEmpty ? null : '${AppConfig.webAppUrl}?reset=1',
     ),
   );
 

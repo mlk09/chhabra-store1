@@ -393,12 +393,21 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> with 
               : () => run(() async {
                   if (!_form.currentState!.validate()) return;
                   await ref.read(backendProvider).updatePassword(_password.text);
+                  pendingPasswordReset = false;
                   await ref.read(sessionProvider.notifier).refresh();
                   if (!context.mounted) return;
                   showSnack(context, context.tr('Password changed.', 'पासवर्ड बदल गया।'));
                   context.go(homeFor(ref.read(sessionProvider).requireValue, ref.read(prefsProvider)));
                 }),
           child: Text(context.tr('Save password', 'पासवर्ड सेव करें')),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () {
+            pendingPasswordReset = false;
+            context.go(homeFor(ref.read(sessionProvider).requireValue, ref.read(prefsProvider)));
+          },
+          child: Text(context.tr('Not now', 'अभी नहीं')),
         ),
       ],
     );

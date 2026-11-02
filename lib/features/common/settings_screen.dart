@@ -67,6 +67,15 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             Card(
               child: ListTile(
+                leading: const Icon(Icons.lock_reset_outlined),
+                title: Text(context.tr('Change password', 'पासवर्ड बदलें')),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/reset-password'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
                 leading: Icon(Icons.delete_forever_outlined, color: t.colorScheme.error),
                 title: Text(
                   context.tr('Delete my account', 'मेरा खाता हटाएँ'),
