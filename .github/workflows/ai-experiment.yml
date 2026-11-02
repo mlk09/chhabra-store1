@@ -64,9 +64,9 @@ jobs:
               });
               const j = await r.json();
               const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text ?? JSON.stringify(j?.error ?? j).slice(0, 120);
-              console.log(`::notice title=${label} → HTTP ${r.status} in ${((Date.now() - t) / 1000).toFixed(1)}s::${String(txt).replace(/\s+/g, " ").slice(0, 160)}`);
+              console.log(`::notice title=${label.replace(/,/g, ';')}::HTTP ${r.status} in ${((Date.now() - t) / 1000).toFixed(1)}s — ${String(txt).replace(/\s+/g, " ").slice(0, 160)}`);
             } catch (e) {
-              console.log(`::warning title=${label} → ${(e as Error).name} after ${((Date.now() - t) / 1000).toFixed(1)}s::`);
+              console.log(`::warning title=${label.replace(/,/g, ';')}::${(e as Error).name} after ${((Date.now() - t) / 1000).toFixed(1)}s`);
             }
           }
           const simplePrompt = 'Identify the product. Reply JSON {"name":string,"size":string,"mrp":number}.';
