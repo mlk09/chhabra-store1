@@ -28,6 +28,10 @@ jobs:
           OUTFILE=/tmp/b.json .github/scripts/sql.sh "select coalesce(string_agg(id, ', '), 'none') as buckets from storage.buckets"
           OUTFILE=/tmp/a.json .github/scripts/sql.sh "select coalesce((select string_agg(c.relname || ' (' || c.reltuples::bigint || ')', ', ') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'app_private'), 'no app_private schema') as t,
             (select count(*) from information_schema.tables where table_schema = 'app_private') as n"
+          OUTFILE=/tmp/ai.json .github/scripts/sql.sh "select coalesce(string_agg(u.email || ' day=' || a.day || ' count=' || a.count, '; '), 'no AI requests reached the server yet') as rows from public.ai_usage a join auth.users u on u.id = a.user_id" || true
+          [ -f /tmp/ai.json ] && echo "::notice title=AI requests that reached the server::$(jq -r '.[0].rows' /tmp/ai.json)"
+          OUTFILE=/tmp/own.json .github/scripts/sql.sh "select coalesce(string_agg(u.email || ' (' || m.role || ')', ', '), 'none') as o from public.shop_members m join auth.users u on u.id = m.user_id" || true
+          [ -f /tmp/own.json ] && echo "::notice title=Shop owners/staff::$(jq -r '.[0].o' /tmp/own.json)"
           echo "::notice title=app_private schema::$(jq -r '.[0].t' /tmp/a.json)"
           echo "::notice title=Project ${PROJECT_REF} — public tables (approx rows)::$(jq -r '.[0].tables' /tmp/t.json | cut -c1-900)"
           echo "::notice title=Login users::$(jq -r '.[0].users' /tmp/u.json)"
