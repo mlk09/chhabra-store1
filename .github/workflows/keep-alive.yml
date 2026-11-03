@@ -1,5 +1,8 @@
 # Free Supabase projects pause after ~7 days without activity.
 # This makes one tiny read every 3 days so the shop never "goes to sleep".
+# GitHub also switches off scheduled workflows in a repo with no commits for
+# 60 days, so every run switches itself back on (resets that 60-day clock).
+# If Supabase does not answer, the run fails and GitHub emails you.
 name: keep-alive
 
 on:
@@ -7,7 +10,8 @@ on:
     - cron: "17 3 */3 * *"
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  actions: write   # only to keep this schedule switched on
 
 jobs:
   ping:
@@ -20,6 +24,17 @@ jobs:
         run: |
           [ -z "$RAW_URL" ] && { echo "Supabase not set up yet — nothing to keep alive."; exit 0; }
           URL=$(echo "$RAW_URL" | tr -d '[:space:]"' | sed -E 's#(\.supabase\.co).*#\1#')
-          CODE=$(curl -s -o /dev/null -w '%{http_code}' "$URL/rest/v1/shops?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          for try in 1 2 3; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$URL/rest/v1/shops?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+            [ "$CODE" = "200" ] && break
+            sleep 20
+          done
           echo "Supabase answered HTTP $CODE"
-          [ "$CODE" = "200" ] || { echo "::warning::Supabase did not answer 200 — check the project is not paused (supabase.com/dashboard)."; }
+          if [ "$CODE" != "200" ]; then
+            echo "::error title=Shop server not answering::Supabase answered HTTP $CODE. Open supabase.com/dashboard and check the project is not paused (Restore project)."
+            exit 1
+          fi
+      - name: Keep this schedule switched on
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keep-alive.yml/enable" && echo "schedule stays on"
