@@ -107,6 +107,8 @@ Limit: 300 photos per person per day (protects your free quota).
 
 **Customer:** ADD → cart (− / +, loose items by weight) → coupon → **Checkout** → address or pickup → time slot → **Place order** → live tracking in **Orders**. Cancel is possible until the shop accepts. **Order again** refills the cart.
 
+**Shopkeeper link:** `https://<you>.github.io/<repo>/app/?owner=1` opens the login screen first (customers use the same link without `?owner=1`). After login the owner lands in the shop panel.
+
 **Shop:** the **Orders** tab rings (bell + phone notification) when an order arrives while the app is open or in the background. Open it → **Accept order** → **Mark packed** → **Out for delivery** / **Ready for pickup** → **Mark delivered** (cash orders become "Paid"). Item out of stock? ⋮ → **Not available**: the bill goes down by that item and stock is put back.
 
 **Offers & coupons:** More → **Offers & coupons**.

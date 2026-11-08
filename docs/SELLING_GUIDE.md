@@ -11,6 +11,7 @@ Dukaandar ko tech ka kuch nahi sambhalna padta. Aap updates, backup aur support 
 |---|---|
 | **Android app** (apne naam/logo ke saath) | Download page ka link + QR: `https://mlk09.github.io/chhabra-store1/` |
 | **Web app** (iPhone / computer ke liye) | `https://mlk09.github.io/chhabra-store1/app/` |
+| **Dukaandar ka link** (seedha login khulta hai) | `https://mlk09.github.io/chhabra-store1/app/?owner=1` |
 | **Owner login** | Dukaandar apne email se sign up kare → aap **make-owner** chalayein |
 | **Saare products ka setup** | Pehli baar aap ya dukaandar: AI photo / Bulk photos se |
 | **QR poster** dukaan ke counter ke liye | Download page par QR hai, print karke lagayein |

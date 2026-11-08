@@ -1,5 +1,6 @@
 import 'package:chhabra_store/app.dart';
 import 'package:chhabra_store/core/app_state.dart';
+import 'package:chhabra_store/core/router.dart';
 import 'package:chhabra_store/data/demo/demo_backend.dart';
 import 'package:chhabra_store/data/local/local_store.dart';
 import 'package:flutter/material.dart';
@@ -173,5 +174,17 @@ void main() {
     await tester.tap(find.text('Add product').first);
     await tester.pumpAndSettle();
     expect(find.text('Fill from photo (AI)'), findsOneWidget);
+  });
+
+  testWidgets('shopkeeper link (?owner=1) opens login first, and the shop is one tap away', (tester) async {
+    await store.setPref('seenWelcome', true);
+    pendingOwnerLogin = true;
+    addTearDown(() => pendingOwnerLogin = false);
+    await pumpApp(tester);
+    expect(find.widgetWithText(AppBar, 'Log in'), findsOneWidget);
+    await tester.tap(find.byTooltip('Go to the shop'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Log in'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

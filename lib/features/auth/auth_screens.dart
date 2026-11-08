@@ -24,7 +24,17 @@ class _AuthScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title)),
+    appBar: AppBar(
+      title: Text(title),
+      // Opened straight from the shopkeeper link: no page behind it, so offer the shop instead.
+      leading: Navigator.of(context).canPop()
+          ? null
+          : IconButton(
+              tooltip: context.tr('Go to the shop', 'दुकान पर जाएँ'),
+              icon: const Icon(Icons.close),
+              onPressed: () => context.go('/shop'),
+            ),
+    ),
     body: SafeArea(
       child: Center(
         child: ConstrainedBox(

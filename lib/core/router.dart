@@ -38,6 +38,10 @@ final _rootKey = GlobalKey<NavigatorState>();
 /// (…/app/?reset=1). Cleared once the new password is saved or skipped.
 bool pendingPasswordReset = kIsWeb && Uri.base.queryParameters['reset'] == '1';
 
+/// Shopkeeper link (…/app/?owner=1): opens the login screen first instead of
+/// the shop, once. After login the owner lands in the shop panel.
+bool pendingOwnerLogin = kIsWeb && Uri.base.queryParameters['owner'] == '1';
+
 /// Where a person lands after startup / login.
 String homeFor(Session s, Prefs prefs) {
   if (!s.hasShop) return '/pick-shop';
@@ -66,6 +70,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!session.hasValue) return loc == '/splash' ? null : '/splash';
       final s = session.requireValue;
       if (pendingPasswordReset && s.isLoggedIn && !s.isDemo && loc != '/reset-password') return '/reset-password';
+      if (pendingOwnerLogin) {
+        pendingOwnerLogin = false; // only once, so "back to shop" still works
+        if (!(s.isLoggedIn && !s.isDemo) && s.hasShop) return '/login';
+      }
       if (loc == '/splash' || loc == '/error') return homeFor(s, ref.read(prefsProvider));
       // Platform app with no shop chosen yet: only shop-finder and login screens.
       const noShopOk = {'/pick-shop', '/login', '/signup', '/forgot', '/reset-password', '/settings'};
