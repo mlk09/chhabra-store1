@@ -309,30 +309,104 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> with _Busy {
   final _form = GlobalKey<FormState>();
+  final _codeForm = GlobalKey<FormState>();
   final _email = TextEditingController();
+  final _code = TextEditingController();
+  final _password = TextEditingController();
   bool _sent = false;
 
   @override
   void dispose() {
     _email.dispose();
+    _code.dispose();
+    _password.dispose();
     super.dispose();
   }
+
+  Future<void> _send() => run(() async {
+    if (!_form.currentState!.validate()) return;
+    await ref.read(backendProvider).sendPasswordReset(_email.text);
+    if (mounted) setState(() => _sent = true);
+  });
+
+  /// Code from the email → logged in → new password saved. Works on any phone or
+  /// browser (a reset link only works in the browser that asked for it).
+  Future<void> _save() => run(() async {
+    if (!_codeForm.currentState!.validate()) return;
+    final backend = ref.read(backendProvider);
+    resettingWithCode = true;
+    try {
+      await backend.verifyResetCode(email: _email.text, code: _code.text);
+      await backend.updatePassword(_password.text);
+    } finally {
+      resettingWithCode = false;
+    }
+    pendingPasswordReset = false;
+    await ref.read(sessionProvider.notifier).refresh();
+    if (!mounted) return;
+    showSnack(context, context.tr('Password changed. You are logged in.', 'पासवर्ड बदल गया। आप लॉग इन हैं।'));
+    context.go(homeFor(ref.read(sessionProvider).requireValue, ref.read(prefsProvider)));
+  });
 
   @override
   Widget build(BuildContext context) {
     return _AuthScaffold(
       title: context.tr('Reset password', 'पासवर्ड रीसेट'),
       children: [
-        if (_sent)
+        if (_sent) ...[
           MessageView(
             icon: Icons.mark_email_read_outlined,
             title: context.tr('Check your email', 'अपना ईमेल देखें'),
             message: context.tr(
-              'We sent a link to set a new password. Open it on this device.',
-              'नया पासवर्ड बनाने का लिंक भेजा है। इसे इसी फ़ोन/कंप्यूटर पर खोलें।',
+              'We sent a code to ${_email.text.trim()}. Enter it below with your new password. '
+                  'Not there? Look in Spam.',
+              '${_email.text.trim()} पर कोड भेजा है। नीचे कोड और नया पासवर्ड डालें। '
+                  'नहीं मिला? Spam फ़ोल्डर देखें।',
             ),
-          )
-        else ...[
+          ),
+          const SizedBox(height: 12),
+          Form(
+            key: _codeForm,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _code,
+                  keyboardType: TextInputType.number,
+                  autofillHints: const [AutofillHints.oneTimeCode],
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: context.tr('Code from the email', 'ईमेल वाला कोड'),
+                    prefixIcon: const Icon(Icons.pin_outlined),
+                  ),
+                  validator: (v) => RegExp(r'^\d{6,10}$').hasMatch((v ?? '').trim())
+                      ? null
+                      : context.tr('Enter the code from the email', 'ईमेल वाला कोड डालें'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _password,
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.newPassword],
+                  decoration: InputDecoration(
+                    labelText: context.tr('New password', 'नया पासवर्ड'),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                  ),
+                  validator: (v) => _validPassword(context, v),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: busy ? null : _save,
+            child: Text(context.tr('Save new password', 'नया पासवर्ड सेव करें')),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: busy ? null : _send,
+            child: Text(context.tr('Send the code again', 'कोड दोबारा भेजें')),
+          ),
+        ] else ...[
           Form(
             key: _form,
             child: TextFormField(
@@ -347,14 +421,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
           ),
           const SizedBox(height: 20),
           FilledButton(
-            onPressed: busy
-                ? null
-                : () => run(() async {
-                    if (!_form.currentState!.validate()) return;
-                    await ref.read(backendProvider).sendPasswordReset(_email.text);
-                    if (mounted) setState(() => _sent = true);
-                  }),
-            child: Text(context.tr('Send reset link', 'रीसेट लिंक भेजें')),
+            onPressed: busy ? null : _send,
+            child: Text(context.tr('Send code', 'कोड भेजें')),
           ),
         ],
       ],

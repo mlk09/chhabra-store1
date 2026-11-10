@@ -42,6 +42,9 @@ bool pendingPasswordReset = kIsWeb && Uri.base.queryParameters['reset'] == '1';
 /// the shop, once. After login the owner lands in the shop panel.
 bool pendingOwnerLogin = kIsWeb && Uri.base.queryParameters['owner'] == '1';
 
+/// True while the "code from the email" screen is logging in and saving the new password.
+bool resettingWithCode = false;
+
 /// Where a person lands after startup / login.
 String homeFor(Session s, Prefs prefs) {
   if (!s.hasShop) return '/pick-shop';
@@ -182,7 +185,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     ref.listen(bootstrapProvider, (_, next) {
       if (!next.hasValue) return;
       final sub = Supabase.instance.client.auth.onAuthStateChange.listen((e) {
-        if (e.event == AuthChangeEvent.passwordRecovery) router.go('/reset-password');
+        // The code screen sets the password itself, so don't jump away from it.
+        if (e.event == AuthChangeEvent.passwordRecovery && !resettingWithCode) router.go('/reset-password');
       }, onError: (_) {});
       ref.onDispose(sub.cancel);
     }, fireImmediately: true);

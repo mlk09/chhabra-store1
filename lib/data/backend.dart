@@ -39,6 +39,9 @@ abstract class Backend {
   Future<void> signIn({required String email, required String password});
   Future<void> signUp({required String name, required String email, required String password, String? phone});
   Future<void> sendPasswordReset(String email);
+
+  /// Logs in with the code from the reset email, so [updatePassword] can follow.
+  Future<void> verifyResetCode({required String email, required String code});
   Future<void> updatePassword(String newPassword);
   Future<void> signOut();
   Future<void> deleteAccount();

@@ -71,11 +71,15 @@ jobs:
         run: |
           OWNER="${GITHUB_REPOSITORY%%/*}"; REPO="${GITHUB_REPOSITORY#*/}"
           SITE="https://${OWNER,,}.github.io/${REPO}/app/"
-          BODY=$(jq -n --arg site "$SITE" '{mailer_autoconfirm: true, site_url: $site, uri_allow_list: ($site + "**"), password_min_length: 6}')
+          # Reset email carries a 6-digit code (works on any phone/browser, unlike a link).
+          BODY=$(jq -n --arg site "$SITE" --rawfile tpl supabase/templates/recovery.html \
+            '{mailer_autoconfirm: true, site_url: $site, uri_allow_list: ($site + "**"), password_min_length: 6,
+              mailer_otp_length: 6, mailer_otp_exp: 3600,
+              mailer_subjects_recovery: "Password reset code / पासवर्ड रीसेट कोड", mailer_templates_recovery_content: $tpl}')
           CODE=$(curl -sS -o /tmp/auth.json -w '%{http_code}' -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$BODY")
           if [ "$CODE" = "200" ]; then
-            echo "::notice title=Login settings::Email confirmation OFF, site URL $SITE"
+            echo "::notice title=Login settings::Email confirmation OFF · reset email sends a 6-digit code · site URL $SITE"
           else
             echo "::warning title=Set login settings by hand (HTTP $CODE)::Supabase → Authentication → Sign In / Providers → Email → turn OFF 'Confirm email'. Then URL Configuration → Site URL = $SITE"
           fi

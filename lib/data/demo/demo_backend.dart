@@ -204,6 +204,9 @@ class DemoBackend implements Backend {
   Future<void> sendPasswordReset(String email) async {}
 
   @override
+  Future<void> verifyResetCode({required String email, required String code}) async {}
+
+  @override
   Future<void> updatePassword(String newPassword) async {}
 
   @override

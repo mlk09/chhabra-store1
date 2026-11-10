@@ -107,6 +107,8 @@ Limit: 300 photos per person per day (protects your free quota).
 
 **Customer:** ADD → cart (− / +, loose items by weight) → coupon → **Checkout** → address or pickup → time slot → **Place order** → live tracking in **Orders**. Cancel is possible until the shop accepts. **Order again** refills the cart.
 
+**Forgot password:** the reset email carries a 6-digit code (set by setup-backend). Enter it in the app with the new password: works on any phone or browser. Supabase's built-in email sender allows only a few emails per hour; for many users add your own SMTP (Supabase → Authentication → Emails → SMTP).
+
 **Shopkeeper link:** `https://<you>.github.io/<repo>/app/?owner=1` opens the login screen first (customers use the same link without `?owner=1`). After login the owner lands in the shop panel.
 
 **Shop:** the **Orders** tab rings (bell + phone notification) when an order arrives while the app is open or in the background. Open it → **Accept order** → **Mark packed** → **Out for delivery** / **Ready for pickup** → **Mark delivered** (cash orders become "Paid"). Item out of stock? ⋮ → **Not available**: the bill goes down by that item and stock is put back.

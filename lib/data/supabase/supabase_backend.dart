@@ -84,6 +84,19 @@ class SupabaseBackend implements Backend {
   );
 
   @override
+  Future<void> verifyResetCode({required String email, required String code}) => _guard(() async {
+    try {
+      await _db.auth.verifyOTP(email: email.trim(), token: code.trim(), type: OtpType.recovery);
+    } on AuthException catch (e) {
+      if (e.statusCode == '429') rethrow;
+      throw const AppException(
+        'This code is wrong or has expired. Ask for a new one.',
+        'यह कोड गलत है या पुराना हो गया। नया कोड मँगाएँ।',
+      );
+    }
+  });
+
+  @override
   Future<void> updatePassword(String newPassword) =>
       _guard(() => _db.auth.updateUser(UserAttributes(password: newPassword)));
 

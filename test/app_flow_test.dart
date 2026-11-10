@@ -187,4 +187,28 @@ void main() {
     expect(find.widgetWithText(AppBar, 'Log in'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('forgot password works with the code from the email (any phone or browser)', (tester) async {
+    await store.setPref('seenWelcome', true);
+    pendingOwnerLogin = true;
+    addTearDown(() => pendingOwnerLogin = false);
+    await pumpApp(tester);
+    await tester.tap(find.text('Forgot password?'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'owner@shop.in');
+    await tester.tap(find.text('Send code'));
+    await tester.pumpAndSettle();
+    expect(find.text('Check your email'), findsOneWidget);
+
+    await tester.tap(find.text('Save new password'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter the code from the email'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Code from the email'), '123456');
+    await tester.enterText(find.widgetWithText(TextFormField, 'New password'), 'secret12');
+    await tester.tap(find.text('Save new password'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reset password'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
